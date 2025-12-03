@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Box } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -143,7 +143,7 @@ function getBookMoveForPosition(fen, color, enemyId) {
 // Starting position FEN constant
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
+const ChessGame = ({ enemy, playerColor, onGameEnd, onBack, onSwitchTo3D }) => {
   // Create Chess instance lazily to avoid recreating on each render
   const gameRef = useRef(null);
   if (gameRef.current === null) {
@@ -746,6 +746,21 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
                 <Flag size={12} />
                 RESIGN
               </button>
+              {onSwitchTo3D && (
+                <button
+                  data-testid="switch-3d-btn"
+                  onClick={onSwitchTo3D}
+                  className="flex items-center justify-center gap-1 py-1.5 px-3 rounded transition-all text-xs"
+                  style={{ 
+                    fontFamily: 'Orbitron, sans-serif',
+                    background: 'linear-gradient(135deg, #bf00ff40 0%, #ff00bf40 100%)',
+                    border: '1px solid #bf00ff50'
+                  }}
+                >
+                  <Box size={12} className="text-purple-400" />
+                  <span className="text-purple-300">3D</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Skull, Scale, RotateCcw, Swords } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
 
-const VictoryScreen = ({ winner, enemy, playerColor, onRestart }) => {
+const VictoryScreen = ({ winner, enemy, playerColor, onPlayAgain, onNewEnemy }) => {
   const [isReady, setIsReady] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -215,7 +215,7 @@ const VictoryScreen = ({ winner, enemy, playerColor, onRestart }) => {
         <div className={`flex flex-wrap justify-center gap-3 transition-all duration-1000 delay-500 ${isReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <button
             data-testid="rematch-btn"
-            onClick={onRestart}
+            onClick={onPlayAgain}
             className="flex items-center gap-2 px-6 py-3 rounded-lg font-bold tracking-wider transition-all duration-300 hover:scale-105 text-sm"
             style={{ 
               background: 'linear-gradient(135deg, #ff0080 0%, #7928ca 100%)',
@@ -229,7 +229,7 @@ const VictoryScreen = ({ winner, enemy, playerColor, onRestart }) => {
           
           <button
             data-testid="new-enemy-btn"
-            onClick={onRestart}
+            onClick={onNewEnemy}
             className="flex items-center gap-2 px-6 py-3 rounded-lg font-bold tracking-wider transition-all duration-300 hover:scale-105 bg-white/10 hover:bg-white/20 text-sm"
             style={{ fontFamily: 'Orbitron, sans-serif' }}
           >

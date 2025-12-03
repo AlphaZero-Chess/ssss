@@ -190,8 +190,14 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
     lastPositionsRef.current = [];
   }, []);
 
-  // Handle laptop tap
-  const handleLaptopTap = useCallback(() => {
+  // Handle laptop tap - supports both touch and click
+  const handleLaptopTap = useCallback((e) => {
+    // Prevent default to avoid any scroll or other touch behaviors
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (!laptopOpen) {
       setLaptopOpen(true);
       
@@ -302,11 +308,20 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
             left: laptopPosition.x,
             top: laptopPosition.y,
             zIndex: 9998,
+            touchAction: 'none',
+            userSelect: 'none',
+            WebkitTapHighlightColor: 'transparent',
+            cursor: 'pointer',
           }}
           onClick={handleLaptopTap}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchEnd={handleLaptopTap}
           data-testid="dropped-laptop"
         >
-          <div className="laptop-container">
+          <div className="laptop-container" style={{ pointerEvents: 'none' }}>
             {/* Laptop Screen */}
             <div className={`laptop-screen ${laptopOpen ? 'open' : ''}`}>
               {laptopOpen && (
@@ -344,6 +359,7 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
       <style>{`
         .among-us-crewmate {
           animation: crewmate-idle 2s ease-in-out infinite;
+          pointer-events: auto !important;
         }
         
         .among-us-crewmate.peeking {
@@ -392,6 +408,11 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
         .dropped-laptop {
           cursor: pointer;
           animation: laptop-drop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+          pointer-events: auto !important;
+        }
+        
+        .dropped-laptop * {
+          pointer-events: none;
         }
         
         @keyframes laptop-drop {
