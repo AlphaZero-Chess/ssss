@@ -42,26 +42,24 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
   const lastPositionsRef = useRef([]);
   const crewmateRef = useRef(null);
   
-  // Detect mobile device
+  // Detect mobile device and set initial position
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth <= 768 || 
         ('ontouchstart' in window) || 
         (navigator.maxTouchPoints > 0);
       setIsMobile(mobile);
+      
+      // Set initial peek position based on screen size when mobile is detected
+      if (mobile) {
+        const screenHeight = window.innerHeight;
+        setCrewmatePosition({ x: -40, y: screenHeight * 0.3 });
+      }
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  // Set initial peek position based on screen size
-  useEffect(() => {
-    if (isMobile) {
-      const screenHeight = window.innerHeight;
-      setCrewmatePosition({ x: -40, y: screenHeight * 0.3 });
-    }
-  }, [isMobile]);
 
   // Peek animation - character bounces out periodically
   useEffect(() => {
@@ -108,6 +106,17 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
     }
     
     return avgMovement > SHAKE_THRESHOLD && directionChanges >= 2;
+  }, []);
+
+  // Drop laptop function - MUST be declared before handleDragMove which uses it
+  const dropLaptop = useCallback((x, y) => {
+    setLaptopDropped(true);
+    setLaptopPosition({ x: x + 30, y: y + 60 });
+    
+    // Hide crewmate after dropping laptop
+    setTimeout(() => {
+      setIsVisible(false);
+    }, 500);
   }, []);
 
   // Handle touch/mouse start
@@ -173,23 +182,12 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
         lastPositionsRef.current = [];
       }
     }
-  }, [isDragging, laptopDropped, lastShakeTime, detectShake]);
+  }, [isDragging, laptopDropped, lastShakeTime, detectShake, dropLaptop]);
 
   // Handle touch/mouse end
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
     lastPositionsRef.current = [];
-  }, []);
-
-  // Drop laptop function
-  const dropLaptop = useCallback((x, y) => {
-    setLaptopDropped(true);
-    setLaptopPosition({ x: x + 30, y: y + 60 });
-    
-    // Hide crewmate after dropping laptop
-    setTimeout(() => {
-      setIsVisible(false);
-    }, 500);
   }, []);
 
   // Handle laptop tap
