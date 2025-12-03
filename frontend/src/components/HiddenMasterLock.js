@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import AmongUsEasterEgg from './AmongUsEasterEgg';
 
 // Secret code: Type "ALPHA" to unlock the hidden master
 const SECRET_CODE = ['a', 'l', 'p', 'h', 'a'];
@@ -18,6 +19,25 @@ const HiddenMasterLock = ({ children, onUnlock }) => {
   const [showHint, setShowHint] = useState(false);
   const [electricPulse, setElectricPulse] = useState(0);
   const hintTimerRef = useRef(null);
+  
+  // Mobile-specific states
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileKeyboardEnabled, setMobileKeyboardEnabled] = useState(false);
+  const [mobileInputValue, setMobileInputValue] = useState('');
+  const mobileInputRef = useRef(null);
+  
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768 || 
+        ('ontouchstart' in window) || 
+        (navigator.maxTouchPoints > 0);
+      setIsMobile(mobile);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Electric pulse effect
   useEffect(() => {
@@ -41,6 +61,47 @@ const HiddenMasterLock = ({ children, onUnlock }) => {
       if (onUnlock) onUnlock();
     }, 3500);
   }, [onUnlock]);
+
+  // Handle mobile input change (must be after triggerUnlock)
+  const handleMobileInputChange = useCallback((e) => {
+    const value = e.target.value.toLowerCase();
+    setMobileInputValue(value);
+    
+    // Check if the entered text matches the secret code
+    const secretWord = SECRET_CODE.join('');
+    
+    if (value === secretWord) {
+      // Unlock!
+      triggerUnlock();
+      setMobileInputValue('');
+    } else if (!secretWord.startsWith(value) && value.length > 0) {
+      // Wrong input, reset
+      setMobileInputValue('');
+    }
+    
+    // Update code progress based on input
+    const progressLength = value.length;
+    const matchingChars = [];
+    for (let i = 0; i < progressLength; i++) {
+      if (value[i] === SECRET_CODE[i]) {
+        matchingChars.push(value[i]);
+      } else {
+        break;
+      }
+    }
+    setCodeProgress(matchingChars);
+  }, [triggerUnlock]);
+  
+  // Handle mobile keyboard unlock from Among Us easter egg
+  const handleMobileKeyboardUnlock = useCallback(() => {
+    setMobileKeyboardEnabled(true);
+    // Focus the input after a brief delay
+    setTimeout(() => {
+      if (mobileInputRef.current) {
+        mobileInputRef.current.focus();
+      }
+    }, 100);
+  }, []);
 
   // Secret code listener
   const handleKeyPress = useCallback((e) => {
@@ -333,6 +394,110 @@ const HiddenMasterLock = ({ children, onUnlock }) => {
           </div>
         </div>
       )}
+      
+      {/* Mobile keyboard input - only shows when enabled via Among Us easter egg */}
+      {isMobile && mobileKeyboardEnabled && !isUnlocking && (
+        <div className="mobile-keyboard-input-wrapper" data-testid="mobile-keyboard-input">
+          <div className="mobile-input-container">
+            <input
+              ref={mobileInputRef}
+              type="text"
+              value={mobileInputValue}
+              onChange={handleMobileInputChange}
+              placeholder="TYPE THE ANCIENT NAME..."
+              className="mobile-secret-input"
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              maxLength={5}
+            />
+            <div className="mobile-input-hint">
+              Type the secret word to break the seal
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Among Us Easter Egg - Only shows on mobile when keyboard not yet unlocked */}
+      {isMobile && !mobileKeyboardEnabled && !isUnlocking && isLocked && (
+        <AmongUsEasterEgg onUnlockKeyboard={handleMobileKeyboardUnlock} />
+      )}
+      
+      {/* Mobile keyboard input styles */}
+      <style>{`
+        .mobile-keyboard-input-wrapper {
+          position: absolute;
+          bottom: -100px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 30;
+          animation: slide-up 0.5s ease-out;
+        }
+        
+        @keyframes slide-up {
+          from { 
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+        
+        .mobile-input-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .mobile-secret-input {
+          width: 200px;
+          padding: 12px 16px;
+          font-family: 'Orbitron', sans-serif;
+          font-size: 14px;
+          text-transform: uppercase;
+          letter-spacing: 4px;
+          text-align: center;
+          background: linear-gradient(180deg, rgba(40,20,60,0.95) 0%, rgba(20,10,35,0.98) 100%);
+          border: 2px solid rgba(191, 0, 255, 0.5);
+          border-radius: 8px;
+          color: #e0a0ff;
+          outline: none;
+          box-shadow: 
+            0 0 15px rgba(191, 0, 255, 0.3),
+            inset 0 0 10px rgba(191, 0, 255, 0.1);
+          transition: all 0.3s ease;
+        }
+        
+        .mobile-secret-input:focus {
+          border-color: rgba(191, 0, 255, 0.8);
+          box-shadow: 
+            0 0 25px rgba(191, 0, 255, 0.5),
+            0 0 50px rgba(191, 0, 255, 0.2),
+            inset 0 0 15px rgba(191, 0, 255, 0.2);
+        }
+        
+        .mobile-secret-input::placeholder {
+          color: rgba(200, 150, 255, 0.4);
+          font-size: 10px;
+          letter-spacing: 2px;
+        }
+        
+        .mobile-input-hint {
+          font-family: 'Rajdhani', sans-serif;
+          font-size: 11px;
+          color: rgba(200, 150, 255, 0.6);
+          text-align: center;
+          animation: pulse-hint 2s infinite;
+        }
+        
+        @keyframes pulse-hint {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };

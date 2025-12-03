@@ -11,13 +11,17 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
  *   👁
  * </SneakyEyeTracker>
  * 
+ * Or with image:
+ * <SneakyEyeTracker size="large" glowColor="#bf00ff" useImage />
+ * 
  * Props:
  * - size: 'small' | 'large' - determines the eye size and tracking intensity
  * - glowColor: string - the glow color for the eye
  * - className: string - additional classes
  * - style: object - additional inline styles
  * - enableTracking: boolean - enables/disables tracking (default: true)
- * - children: the eye emoji to display
+ * - useImage: boolean - use eye-icon.png instead of emoji (default: true)
+ * - children: the eye emoji to display (fallback if useImage is false)
  */
 const SneakyEyeTracker = ({ 
   children, 
@@ -25,7 +29,8 @@ const SneakyEyeTracker = ({
   glowColor = '#bf00ff',
   className = '',
   style = {},
-  enableTracking = true
+  enableTracking = true,
+  useImage = true
 }) => {
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const eyeRef = useRef(null);
@@ -143,6 +148,11 @@ const SneakyEyeTracker = ({
     ? 'text-7xl sm:text-8xl' 
     : 'text-3xl sm:text-4xl';
 
+  // Image dimensions based on size
+  const imageDimensions = size === 'large' 
+    ? { width: 80, height: 80 } 
+    : { width: 35, height: 35 };
+
   return (
     <span
       ref={eyeRef}
@@ -155,7 +165,20 @@ const SneakyEyeTracker = ({
         ...style
       }}
     >
-      {children}
+      {useImage ? (
+        <img 
+          src="/eye-icon.png" 
+          alt="Eye" 
+          width={imageDimensions.width}
+          height={imageDimensions.height}
+          style={{ 
+            display: 'inline-block',
+            verticalAlign: 'middle'
+          }}
+        />
+      ) : (
+        children
+      )}
     </span>
   );
 };

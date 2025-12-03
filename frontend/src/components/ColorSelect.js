@@ -88,9 +88,8 @@ const ColorSelect = ({ enemy, onSelect, onBack }) => {
             <SneakyEyeTracker
               size="small"
               glowColor={enemy?.color}
-            >
-              {enemy?.avatar}
-            </SneakyEyeTracker>
+              useImage={true}
+            />
           ) : (
             <span className="text-3xl sm:text-4xl" style={{ filter: `drop-shadow(0 0 15px ${enemy?.color})` }}>
               {enemy?.avatar}

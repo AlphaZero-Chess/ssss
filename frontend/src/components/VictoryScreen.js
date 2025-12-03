@@ -182,10 +182,9 @@ const VictoryScreen = ({ winner, enemy, playerColor, onRestart }) => {
                 <SneakyEyeTracker
                   size="small"
                   glowColor={enemy?.color}
+                  useImage={true}
                   className={`${isMobile ? 'text-3xl' : 'text-4xl'} block mb-1`}
-                >
-                  {enemy?.avatar}
-                </SneakyEyeTracker>
+                />
               ) : (
                 <span 
                   className={`${isMobile ? 'text-3xl' : 'text-4xl'} block mb-1`}

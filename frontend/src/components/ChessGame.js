@@ -647,10 +647,9 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
                 <SneakyEyeTracker
                   size="small"
                   glowColor={enemy?.color}
+                  useImage={true}
                   className="text-2xl sm:text-3xl"
-                >
-                  {enemy?.avatar}
-                </SneakyEyeTracker>
+                />
               ) : (
                 <span className="text-2xl sm:text-3xl" style={{ filter: `drop-shadow(0 0 8px ${enemy?.color})` }}>
                   {enemy?.avatar}
