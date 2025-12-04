@@ -768,83 +768,132 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
                 <Flag size={12} />
                 RESIGN
               </button>
+              
+              {/* 3D Mode Toggle - AlphaZero Only */}
+              {isAlphaZeroGame && (
+                <button
+                  data-testid="3d-mode-btn"
+                  onClick={toggle3DMode}
+                  className={`flex items-center justify-center gap-1 py-1.5 px-3 rounded transition-all text-xs ${
+                    is3DMode 
+                      ? 'bg-purple-500/40 text-purple-200 border border-purple-400/50' 
+                      : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400'
+                  }`}
+                  style={{ 
+                    fontFamily: 'Orbitron, sans-serif',
+                    boxShadow: is3DMode ? '0 0 15px rgba(191, 0, 255, 0.4)' : 'none'
+                  }}
+                >
+                  {is3DMode ? <Grid3X3 size={12} /> : <Box size={12} />}
+                  {is3DMode ? '2D' : '3D'}
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* Chess Board with Resize Handle */}
         <div className={`relative ${isMobile ? 'order-1' : ''}`} ref={boardContainerRef}>
-          {/* Board Container */}
-          <div 
-            className="chess-board-wrapper p-1.5 rounded-lg relative"
-            style={{
-              background: 'linear-gradient(180deg, rgba(25,25,40,0.85) 0%, rgba(15,15,25,0.9) 100%)',
-              boxShadow: `0 0 30px ${enemy?.color}20, 0 0 60px ${enemy?.color}08`,
-              border: `1px solid ${enemy?.color}25`,
-              backdropFilter: 'blur(8px)',
-              width: boardSize + 12,
-              height: boardSize + 12,
-            }}
-            data-testid="chess-board-container"
-          >
-            <Chessboard
-              options={{
-                id: "chess-board",
-                position: position,
-                onPieceDrop: onDrop,
-                canDragPiece: canDragPiece,
-                boardWidth: boardSize,
-                boardOrientation: playerColor,
-                boardStyle: {
-                  borderRadius: '6px',
-                  boxShadow: 'inset 0 0 15px rgba(0,0,0,0.4)'
-                },
-                squareStyles: customSquareStyles,
-                darkSquareStyle: { backgroundColor: '#4a5568' },
-                lightSquareStyle: { backgroundColor: '#a0aec0' },
-                animationDurationInMs: 180
+          {/* Board Container - Conditional 2D/3D */}
+          {isAlphaZeroGame && is3DMode ? (
+            /* 3D Board - AlphaZero Only */
+            <Suspense fallback={
+              <div 
+                className="flex items-center justify-center rounded-lg"
+                style={{
+                  width: boardSize + 12,
+                  height: boardSize + 12,
+                  background: 'linear-gradient(180deg, rgba(25,25,40,0.85) 0%, rgba(15,15,25,0.9) 100%)',
+                  border: '1px solid rgba(191, 0, 255, 0.25)'
+                }}
+              >
+                <div className="text-purple-400 text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  LOADING 3D...
+                </div>
+              </div>
+            }>
+              <Chess3DBoard
+                position={position}
+                lastMove={lastMove}
+                playerColor={playerColor}
+                boardSize={boardSize + 12}
+              />
+            </Suspense>
+          ) : (
+            /* Standard 2D Board */
+            <div 
+              className="chess-board-wrapper p-1.5 rounded-lg relative"
+              style={{
+                background: 'linear-gradient(180deg, rgba(25,25,40,0.85) 0%, rgba(15,15,25,0.9) 100%)',
+                boxShadow: `0 0 30px ${enemy?.color}20, 0 0 60px ${enemy?.color}08`,
+                border: `1px solid ${enemy?.color}25`,
+                backdropFilter: 'blur(8px)',
+                width: boardSize + 12,
+                height: boardSize + 12,
               }}
-            />
-            
-            {/* Resize Handle - Bottom Right Corner */}
-            <div
-              className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity"
-              style={{ 
-                background: `linear-gradient(135deg, transparent 50%, ${enemy?.color || '#ff0080'}60 50%)`,
-                borderBottomRightRadius: '6px'
-              }}
-              onMouseDown={handleResizeStart}
-              onTouchStart={handleResizeStart}
-              data-testid="resize-handle"
+              data-testid="chess-board-container"
             >
-              <Move size={10} className="text-white/50 rotate-45" style={{ marginTop: '4px', marginLeft: '4px' }} />
+              <Chessboard
+                options={{
+                  id: "chess-board",
+                  position: position,
+                  onPieceDrop: onDrop,
+                  canDragPiece: canDragPiece,
+                  boardWidth: boardSize,
+                  boardOrientation: playerColor,
+                  boardStyle: {
+                    borderRadius: '6px',
+                    boxShadow: 'inset 0 0 15px rgba(0,0,0,0.4)'
+                  },
+                  squareStyles: customSquareStyles,
+                  darkSquareStyle: { backgroundColor: '#4a5568' },
+                  lightSquareStyle: { backgroundColor: '#a0aec0' },
+                  animationDurationInMs: 180
+                }}
+              />
+              
+              {/* Resize Handle - Bottom Right Corner */}
+              <div
+                className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity"
+                style={{ 
+                  background: `linear-gradient(135deg, transparent 50%, ${enemy?.color || '#ff0080'}60 50%)`,
+                  borderBottomRightRadius: '6px'
+                }}
+                onMouseDown={handleResizeStart}
+                onTouchStart={handleResizeStart}
+                data-testid="resize-handle"
+              >
+                <Move size={10} className="text-white/50 rotate-45" style={{ marginTop: '4px', marginLeft: '4px' }} />
+              </div>
             </div>
-          </div>
+          )}
           
-          {/* Size Controls */}
-          <div className="flex justify-center gap-2 mt-2">
-            <button
-              onClick={setSmallSize}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
-              style={{ fontFamily: 'Rajdhani, sans-serif' }}
-              data-testid="size-small-btn"
-            >
-              <Minimize2 size={12} />
-              Small
-            </button>
-            <span className="text-xs text-gray-500 flex items-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-              {boardSize}px
-            </span>
-            <button
-              onClick={setLargeSize}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
-              style={{ fontFamily: 'Rajdhani, sans-serif' }}
-              data-testid="size-large-btn"
-            >
-              <Maximize2 size={12} />
-              Large
-            </button>
-          </div>
+          {/* Size Controls - Only show for 2D mode */}
+          {!is3DMode && (
+            <div className="flex justify-center gap-2 mt-2">
+              <button
+                onClick={setSmallSize}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
+                style={{ fontFamily: 'Rajdhani, sans-serif' }}
+                data-testid="size-small-btn"
+              >
+                <Minimize2 size={12} />
+                Small
+              </button>
+              <span className="text-xs text-gray-500 flex items-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                {boardSize}px
+              </span>
+              <button
+                onClick={setLargeSize}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
+                style={{ fontFamily: 'Rajdhani, sans-serif' }}
+                data-testid="size-large-btn"
+              >
+                <Maximize2 size={12} />
+                Large
+              </button>
+            </div>
+          )}
           
           {/* Check indicator */}
           {isInCheck && (
