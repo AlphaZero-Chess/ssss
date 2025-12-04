@@ -4,7 +4,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import EnemySelect from "./components/EnemySelect";
 import ColorSelect from "./components/ColorSelect";
 import ChessGame from "./components/ChessGame";
-import ChessGame3D from "./components/ChessGame3D";
 import VictoryScreen from "./components/VictoryScreen";
 
 function App() {
@@ -12,12 +11,9 @@ function App() {
   const [selectedEnemy, setSelectedEnemy] = useState(null);
   const [playerColor, setPlayerColor] = useState(null);
   const [winner, setWinner] = useState(null);
-  const [use3DMode, setUse3DMode] = useState(false); // 3D mode for AlphaZero
 
   const handleEnemySelect = (enemy) => {
     setSelectedEnemy(enemy);
-    // Enable 3D mode for AlphaZero (Hidden Master)
-    setUse3DMode(enemy?.id === 'alphazero');
     setGameState("color-select");
   };
 
@@ -36,7 +32,6 @@ function App() {
     setSelectedEnemy(null);
     setPlayerColor(null);
     setWinner(null);
-    setUse3DMode(false);
   };
 
   // Play again with the same enemy - go directly to color selection
@@ -65,21 +60,12 @@ function App() {
                   />
                 )}
                 {gameState === "playing" && (
-                  use3DMode ? (
-                    <ChessGame3D
-                      enemy={selectedEnemy}
-                      playerColor={playerColor}
-                      onGameEnd={handleGameEnd}
-                      onBack={() => setGameState("color-select")}
-                    />
-                  ) : (
-                    <ChessGame
-                      enemy={selectedEnemy}
-                      playerColor={playerColor}
-                      onGameEnd={handleGameEnd}
-                      onBack={() => setGameState("color-select")}
-                    />
-                  )
+                  <ChessGame
+                    enemy={selectedEnemy}
+                    playerColor={playerColor}
+                    onGameEnd={handleGameEnd}
+                    onBack={() => setGameState("color-select")}
+                  />
                 )}
                 {gameState === "victory" && (
                   <VictoryScreen

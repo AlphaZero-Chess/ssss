@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Box } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
+import Chess3DMode from './Chess3DMode';
 
 // ═══════════════════════════════════════════════════════════════════════
 // PERSONALITY IMPORTS - External personality files
@@ -163,12 +164,18 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [currentTurn, setCurrentTurn] = useState('w');
   const [isInCheck, setIsInCheck] = useState(false);
+  const [is3DMode, setIs3DMode] = useState(false);
+  const [selectedSquare, setSelectedSquare] = useState(null);
+  const [legalMoves, setLegalMoves] = useState([]);
   const stockfishRef = useRef(null);
   const isEngineReady = useRef(false);
   const boardContainerRef = useRef(null);
   const resizeStartRef = useRef({ x: 0, y: 0, size: 0 });
   const moveCountRef = useRef(0);
   const hasInitializedEngineMove = useRef(false);
+  
+  // Check if this is the AlphaZero Hidden Master
+  const isAlphaZero = enemy?.id === 'alphazero';
   
   // Refs for state setters to use in callbacks (avoid stale closures)
   const setPositionRef = useRef(setPosition);
@@ -536,6 +543,8 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
     setLastMove(null);
     setCapturedPieces({ white: [], black: [] });
     setIsThinking(false);
+    setSelectedSquare(null);
+    setLegalMoves([]);
     
     if (playerColor === 'black') {
       hasInitializedEngineMove.current = true; // Set flag before calling
@@ -546,6 +555,86 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
       }, 600);
     }
   }, [playerColor]);
+
+  // 3D Mode square click handler
+  const handle3DSquareClick = useCallback((square) => {
+    if (isThinking || gameStatus !== 'playing') return;
+    
+    const game = gameRef.current;
+    const turn = game.turn();
+    const isPlayerTurnNow = (playerColor === 'white' && turn === 'w') || 
+                           (playerColor === 'black' && turn === 'b');
+    
+    if (!isPlayerTurnNow) return;
+    
+    const piece = game.get(square);
+    const playerPieceColor = playerColor === 'white' ? 'w' : 'b';
+    
+    // If clicking on own piece, select it and show legal moves
+    if (piece && piece.color === playerPieceColor) {
+      setSelectedSquare(square);
+      const moves = game.moves({ square, verbose: true });
+      setLegalMoves(moves.map(m => m.to));
+      return;
+    }
+    
+    // If a piece is selected and clicking on a legal move target, make the move
+    if (selectedSquare && legalMoves.includes(square)) {
+      try {
+        const moveResult = game.move({
+          from: selectedSquare,
+          to: square,
+          promotion: 'q'
+        });
+        
+        if (moveResult) {
+          moveCountRef.current++;
+          const newFen = game.fen();
+          
+          setPosition(newFen);
+          setCurrentTurn(game.turn());
+          setIsInCheck(game.isCheck() && !game.isCheckmate());
+          setMoveHistory(prev => [...prev, moveResult.san]);
+          setLastMove({ from: selectedSquare, to: square });
+          setSelectedSquare(null);
+          setLegalMoves([]);
+          
+          if (moveResult.captured) {
+            const capturedColor = moveResult.color === 'w' ? 'black' : 'white';
+            setCapturedPieces(prev => ({
+              ...prev,
+              [capturedColor]: [...prev[capturedColor], moveResult.captured]
+            }));
+          }
+          
+          if (game.isGameOver()) {
+            handleGameOver(game);
+            return;
+          }
+          
+          // Trigger engine to make its move
+          setTimeout(() => {
+            if (stockfishRef.current?.makeEngineMove) {
+              stockfishRef.current.makeEngineMove();
+            }
+          }, 300);
+        }
+      } catch (e) {
+        console.error('3D move error:', e);
+      }
+    } else {
+      // Clear selection if clicking elsewhere
+      setSelectedSquare(null);
+      setLegalMoves([]);
+    }
+  }, [isThinking, gameStatus, playerColor, selectedSquare, legalMoves, handleGameOver]);
+
+  // Toggle 3D mode
+  const toggle3DMode = useCallback(() => {
+    setIs3DMode(prev => !prev);
+    setSelectedSquare(null);
+    setLegalMoves([]);
+  }, []);
 
   // Resign
   const handleResign = () => {
@@ -747,28 +836,67 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
                 RESIGN
               </button>
             </div>
+            
+            {/* 3D Mode Toggle - Only for AlphaZero Hidden Master */}
+            {isAlphaZero && (
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <button
+                  data-testid="toggle-3d-btn"
+                  onClick={toggle3DMode}
+                  className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all text-xs ${
+                    is3DMode 
+                      ? 'bg-gradient-to-r from-purple-600/40 to-pink-600/40 border border-purple-500/50' 
+                      : 'bg-white/10 hover:bg-white/20 border border-white/10'
+                  }`}
+                  style={{ fontFamily: 'Orbitron, sans-serif' }}
+                >
+                  <Box size={14} className={is3DMode ? 'text-purple-300' : 'text-gray-400'} />
+                  <span className={is3DMode ? 'text-purple-200' : 'text-gray-300'}>
+                    {is3DMode ? '3D MODE ACTIVE' : 'ENABLE 3D MODE'}
+                  </span>
+                </button>
+                {is3DMode && (
+                  <p className="text-center text-xs mt-1.5 text-purple-400/60" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                    Click squares to move • Right-drag to rotate
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Chess Board with Resize Handle */}
         <div className={`relative ${isMobile ? 'order-1' : ''}`} ref={boardContainerRef}>
-          {/* Board Container */}
-          <div 
-            className="chess-board-wrapper p-1.5 rounded-lg relative"
-            style={{
-              background: 'linear-gradient(180deg, rgba(25,25,40,0.85) 0%, rgba(15,15,25,0.9) 100%)',
-              boxShadow: `0 0 30px ${enemy?.color}20, 0 0 60px ${enemy?.color}08`,
-              border: `1px solid ${enemy?.color}25`,
-              backdropFilter: 'blur(8px)',
-              width: boardSize + 12,
-              height: boardSize + 12,
-            }}
-            data-testid="chess-board-container"
-          >
-            <Chessboard
-              options={{
-                id: "chess-board",
-                position: position,
+          {/* 3D Mode Board */}
+          {is3DMode && isAlphaZero ? (
+            <Chess3DMode
+              position={position}
+              playerColor={playerColor}
+              onSquareClick={handle3DSquareClick}
+              selectedSquare={selectedSquare}
+              legalMoves={legalMoves}
+              lastMove={lastMove}
+              isThinking={isThinking}
+              boardSize={boardSize}
+            />
+          ) : (
+            /* Standard 2D Board Container */
+            <div 
+              className="chess-board-wrapper p-1.5 rounded-lg relative"
+              style={{
+                background: 'linear-gradient(180deg, rgba(25,25,40,0.85) 0%, rgba(15,15,25,0.9) 100%)',
+                boxShadow: `0 0 30px ${enemy?.color}20, 0 0 60px ${enemy?.color}08`,
+                border: `1px solid ${enemy?.color}25`,
+                backdropFilter: 'blur(8px)',
+                width: boardSize + 12,
+                height: boardSize + 12,
+              }}
+              data-testid="chess-board-container"
+            >
+              <Chessboard
+                options={{
+                  id: "chess-board",
+                  position: position,
                 onPieceDrop: onDrop,
                 canDragPiece: canDragPiece,
                 boardWidth: boardSize,
