@@ -161,7 +161,7 @@ const ChessPiece3D = ({ piece, square, isSelected, onClick, lastMove, playerColo
       </span>
       {/* Rune engraving on piece base */}
       <div className="piece-rune-engraving">
-        {RUNES[Math.floor(Math.random() * RUNES.length)]}
+        {RUNES[(square.charCodeAt(0) + square.charCodeAt(1)) % RUNES.length]}
       </div>
     </div>
   );

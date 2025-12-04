@@ -925,7 +925,8 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
             >
               <Move size={10} className="text-white/50 rotate-45" style={{ marginTop: '4px', marginLeft: '4px' }} />
             </div>
-          </div>
+            </div>
+          )}
           
           {/* Size Controls */}
           <div className="flex justify-center gap-2 mt-2">
