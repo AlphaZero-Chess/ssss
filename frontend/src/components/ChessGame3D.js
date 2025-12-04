@@ -1,32 +1,697 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { 
-  OrbitControls, 
-  Environment, 
-  Sky, 
-  Cloud, 
-  Stars,
-  Text3D,
-  Center,
-  Float,
-  MeshReflectorMaterial,
-  useTexture,
-  Sparkles,
-  PointMaterial,
-  Points
-} from '@react-three/drei';
+import { OrbitControls, Text, Float, MeshTransmissionMaterial, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { Chess } from 'chess.js';
-import { ArrowLeft, RotateCcw, Flag, Zap, Cube, Square } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Flag, Zap, Eye } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
 
-// Personality imports
-import { ELEGANT_CONFIG, ELEGANT_OPENINGS } from '../personalities/elegant';
-import { NON_ELEGANT_CONFIG, NON_ELEGANT_OPENINGS } from '../personalities/nonelegant';
-import { MINI_A0_CONFIG, MINI_A0_OPENINGS } from '../personalities/minia0';
+// Import AlphaZero settings
+import { ALPHAZERO_CONFIG, ALPHAZERO_OPENINGS } from '../personalities/alphazero';
 
 // ═══════════════════════════════════════════════════════════════════════
-// HELPER FUNCTIONS - Same as 2D version
+// CONSTANTS & RUNES - Matching HiddenMasterLock aesthetic
+// ═══════════════════════════════════════════════════════════════════════
+const RUNES = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛇ', 'ᛈ', 'ᛉ', 'ᛋ', 'ᛏ', 'ᛒ', 'ᛖ', 'ᛗ', 'ᛚ', 'ᛜ', 'ᛞ', 'ᛟ'];
+const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+// AlphaZero color palette
+const ALPHA_PURPLE = '#bf00ff';
+const ALPHA_PINK = '#ff00bf';
+const ALPHA_GOLD = '#ffcc00';
+
+// ═══════════════════════════════════════════════════════════════════════
+// 3D RUNE PARTICLE SYSTEM - Floating mystical runes
+// ═══════════════════════════════════════════════════════════════════════
+function RuneParticles({ count = 50 }) {
+  const meshRef = useRef();
+  const particles = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => ({
+      position: [
+        (Math.random() - 0.5) * 20,
+        Math.random() * 15 - 5,
+        (Math.random() - 0.5) * 20
+      ],
+      rune: RUNES[i % RUNES.length],
+      speed: 0.2 + Math.random() * 0.3,
+      phase: Math.random() * Math.PI * 2
+    }));
+  }, [count]);
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y = state.clock.elapsedTime * 0.02;
+    }
+  });
+
+  return (
+    <group ref={meshRef}>
+      {particles.map((p, i) => (
+        <Float key={i} speed={p.speed} floatIntensity={0.5}>
+          <Text
+            position={p.position}
+            fontSize={0.3 + Math.random() * 0.2}
+            color={i % 3 === 0 ? ALPHA_PURPLE : i % 3 === 1 ? ALPHA_PINK : ALPHA_GOLD}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.02}
+            outlineColor="#000"
+          >
+            {p.rune}
+          </Text>
+        </Float>
+      ))}
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ELECTRIC ARC - 3D Lightning effect
+// ═══════════════════════════════════════════════════════════════════════
+function ElectricArc({ start, end, intensity = 1 }) {
+  const lineRef = useRef();
+  const points = useMemo(() => {
+    const pts = [];
+    const segments = 20;
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const x = start[0] + (end[0] - start[0]) * t + (Math.random() - 0.5) * 0.3 * intensity;
+      const y = start[1] + (end[1] - start[1]) * t + (Math.random() - 0.5) * 0.3 * intensity;
+      const z = start[2] + (end[2] - start[2]) * t + (Math.random() - 0.5) * 0.3 * intensity;
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+    return pts;
+  }, [start, end, intensity]);
+
+  useFrame(() => {
+    if (lineRef.current) {
+      // Update points for flickering effect
+      const positions = lineRef.current.geometry.attributes.position.array;
+      for (let i = 3; i < positions.length - 3; i += 3) {
+        positions[i] += (Math.random() - 0.5) * 0.05;
+        positions[i + 1] += (Math.random() - 0.5) * 0.05;
+        positions[i + 2] += (Math.random() - 0.5) * 0.05;
+      }
+      lineRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+  });
+
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    return geo;
+  }, [points]);
+
+  return (
+    <line ref={lineRef} geometry={geometry}>
+      <lineBasicMaterial color={ALPHA_PURPLE} linewidth={2} transparent opacity={0.8} />
+    </line>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CHAIN LINK - 3D Rune-engraved chain link
+// ═══════════════════════════════════════════════════════════════════════
+function ChainLink({ position, rotation = [0, 0, 0], rune, scale = 1 }) {
+  const meshRef = useRef();
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 2 + position[0]) * 0.02;
+    }
+  });
+
+  return (
+    <group ref={meshRef} position={position} rotation={rotation} scale={scale}>
+      {/* Torus for chain link */}
+      <mesh>
+        <torusGeometry args={[0.15, 0.04, 8, 16]} />
+        <meshStandardMaterial
+          color="#3a2a5a"
+          metalness={0.9}
+          roughness={0.2}
+          emissive={ALPHA_PURPLE}
+          emissiveIntensity={0.2}
+        />
+      </mesh>
+      {/* Rune text on link */}
+      <Text
+        position={[0, 0, 0.05]}
+        fontSize={0.08}
+        color={ALPHA_GOLD}
+        anchorX="center"
+        anchorY="middle"
+      >
+        {rune}
+      </Text>
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CHAIN SYSTEM - Connecting chains around the board
+// ═══════════════════════════════════════════════════════════════════════
+function ChainSystem() {
+  const chains = useMemo(() => {
+    const result = [];
+    // Corner chains
+    const corners = [
+      { start: [-5, 0, -5], dir: [1, 0.5, 1] },
+      { start: [5, 0, -5], dir: [-1, 0.5, 1] },
+      { start: [-5, 0, 5], dir: [1, 0.5, -1] },
+      { start: [5, 0, 5], dir: [-1, 0.5, -1] }
+    ];
+
+    corners.forEach((corner, ci) => {
+      for (let i = 0; i < 8; i++) {
+        result.push({
+          position: [
+            corner.start[0] + corner.dir[0] * i * 0.4,
+            corner.start[1] + corner.dir[1] * i * 0.4 + 1,
+            corner.start[2] + corner.dir[2] * i * 0.4
+          ],
+          rotation: [0, Math.PI / 4 * (ci % 2 === 0 ? 1 : -1), Math.PI / 2],
+          rune: RUNES[(ci * 8 + i) % RUNES.length]
+        });
+      }
+    });
+
+    return result;
+  }, []);
+
+  return (
+    <group>
+      {chains.map((chain, i) => (
+        <ChainLink
+          key={i}
+          position={chain.position}
+          rotation={chain.rotation}
+          rune={chain.rune}
+          scale={0.8}
+        />
+      ))}
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RUNE SEAL CIRCLE - Rotating mystical seal
+// ═══════════════════════════════════════════════════════════════════════
+function RuneSealCircle({ radius = 6, y = -0.5 }) {
+  const groupRef = useRef();
+  const innerRef = useRef();
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.1;
+    }
+    if (innerRef.current) {
+      innerRef.current.rotation.y = -state.clock.elapsedTime * 0.15;
+    }
+  });
+
+  return (
+    <group position={[0, y, 0]}>
+      {/* Outer ring */}
+      <group ref={groupRef}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[radius - 0.1, radius, 64]} />
+          <meshStandardMaterial
+            color={ALPHA_PURPLE}
+            emissive={ALPHA_PURPLE}
+            emissiveIntensity={0.5}
+            transparent
+            opacity={0.6}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        {/* Outer runes */}
+        {RUNES.slice(0, 12).map((rune, i) => {
+          const angle = (i / 12) * Math.PI * 2;
+          return (
+            <Text
+              key={`outer-${i}`}
+              position={[Math.cos(angle) * radius, 0.01, Math.sin(angle) * radius]}
+              rotation={[-Math.PI / 2, 0, -angle + Math.PI / 2]}
+              fontSize={0.4}
+              color={ALPHA_GOLD}
+              anchorX="center"
+              anchorY="middle"
+            >
+              {rune}
+            </Text>
+          );
+        })}
+      </group>
+
+      {/* Inner ring */}
+      <group ref={innerRef}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[radius * 0.5 - 0.1, radius * 0.5, 64]} />
+          <meshStandardMaterial
+            color={ALPHA_PINK}
+            emissive={ALPHA_PINK}
+            emissiveIntensity={0.4}
+            transparent
+            opacity={0.5}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        {/* Inner runes */}
+        {RUNES.slice(12, 18).map((rune, i) => {
+          const angle = (i / 6) * Math.PI * 2;
+          return (
+            <Text
+              key={`inner-${i}`}
+              position={[Math.cos(angle) * radius * 0.5, 0.01, Math.sin(angle) * radius * 0.5]}
+              rotation={[-Math.PI / 2, 0, -angle + Math.PI / 2]}
+              fontSize={0.3}
+              color={ALPHA_PURPLE}
+              anchorX="center"
+              anchorY="middle"
+            >
+              {rune}
+            </Text>
+          );
+        })}
+      </group>
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CHESS PIECE 3D - Sophisticated rune-engraved piece
+// ═══════════════════════════════════════════════════════════════════════
+function ChessPiece3D({ type, color, position, isSelected, onClick, lastMoveSquare }) {
+  const meshRef = useRef();
+  const isWhite = color === 'w';
+  const pieceColor = isWhite ? '#e8e8e8' : '#1a1a2e';
+  const emissiveColor = isWhite ? '#ffffff' : ALPHA_PURPLE;
+  const isLastMove = lastMoveSquare;
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      if (isSelected) {
+        meshRef.current.position.y = position[1] + 0.3 + Math.sin(state.clock.elapsedTime * 4) * 0.1;
+        meshRef.current.rotation.y = state.clock.elapsedTime * 2;
+      } else {
+        meshRef.current.position.y = position[1];
+        meshRef.current.rotation.y = 0;
+      }
+    }
+  });
+
+  // Piece geometry based on type
+  const getGeometry = () => {
+    switch (type) {
+      case 'k': return <cylinderGeometry args={[0.25, 0.35, 0.9, 8]} />;
+      case 'q': return <cylinderGeometry args={[0.22, 0.32, 0.85, 8]} />;
+      case 'r': return <boxGeometry args={[0.4, 0.6, 0.4]} />;
+      case 'b': return <coneGeometry args={[0.25, 0.7, 6]} />;
+      case 'n': return <coneGeometry args={[0.25, 0.65, 4]} />;
+      case 'p': return <cylinderGeometry args={[0.15, 0.2, 0.45, 8]} />;
+      default: return <sphereGeometry args={[0.25, 16, 16]} />;
+    }
+  };
+
+  // Rune for each piece type
+  const pieceRune = {
+    'k': 'ᛟ', 'q': 'ᛞ', 'r': 'ᛏ', 'b': 'ᛒ', 'n': 'ᛖ', 'p': 'ᚠ'
+  }[type] || 'ᚨ';
+
+  const pieceHeight = {
+    'k': 0.45, 'q': 0.425, 'r': 0.3, 'b': 0.35, 'n': 0.325, 'p': 0.225
+  }[type] || 0.3;
+
+  return (
+    <group
+      ref={meshRef}
+      position={position}
+      onClick={onClick}
+    >
+      {/* Base glow for selected/last move */}
+      {(isSelected || isLastMove) && (
+        <mesh position={[0, -pieceHeight + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.4, 32]} />
+          <meshBasicMaterial
+            color={isSelected ? ALPHA_GOLD : '#ffff00'}
+            transparent
+            opacity={0.6}
+          />
+        </mesh>
+      )}
+
+      {/* Main piece mesh */}
+      <mesh castShadow>
+        {getGeometry()}
+        <meshStandardMaterial
+          color={pieceColor}
+          metalness={0.7}
+          roughness={0.2}
+          emissive={isSelected ? ALPHA_GOLD : emissiveColor}
+          emissiveIntensity={isSelected ? 0.5 : 0.1}
+        />
+      </mesh>
+
+      {/* Rune engraving */}
+      <Text
+        position={[0, 0, 0.26]}
+        fontSize={0.15}
+        color={isWhite ? ALPHA_PURPLE : ALPHA_GOLD}
+        anchorX="center"
+        anchorY="middle"
+      >
+        {pieceRune}
+      </Text>
+
+      {/* Crown for King/Queen */}
+      {(type === 'k' || type === 'q') && (
+        <mesh position={[0, pieceHeight + 0.1, 0]}>
+          <octahedronGeometry args={[0.1, 0]} />
+          <meshStandardMaterial
+            color={ALPHA_GOLD}
+            emissive={ALPHA_GOLD}
+            emissiveIntensity={0.5}
+            metalness={1}
+            roughness={0}
+          />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CHESS BOARD 3D - Sophisticated board with rune engravings
+// ═══════════════════════════════════════════════════════════════════════
+function ChessBoard3D({ position, onSquareClick, selectedSquare, legalMoves, lastMove }) {
+  const boardRef = useRef();
+
+  // Generate squares
+  const squares = useMemo(() => {
+    const result = [];
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const isLight = (row + col) % 2 === 0;
+        const squareName = String.fromCharCode(97 + col) + (8 - row);
+        const isSelected = selectedSquare === squareName;
+        const isLegalMove = legalMoves?.includes(squareName);
+        const isLastMoveSquare = lastMove && (lastMove.from === squareName || lastMove.to === squareName);
+
+        result.push({
+          position: [col - 3.5, 0, row - 3.5],
+          isLight,
+          squareName,
+          isSelected,
+          isLegalMove,
+          isLastMoveSquare
+        });
+      }
+    }
+    return result;
+  }, [selectedSquare, legalMoves, lastMove]);
+
+  return (
+    <group ref={boardRef} position={position}>
+      {/* Board base */}
+      <mesh position={[0, -0.15, 0]} receiveShadow>
+        <boxGeometry args={[9, 0.3, 9]} />
+        <meshStandardMaterial
+          color="#1a0a3a"
+          metalness={0.8}
+          roughness={0.3}
+        />
+      </mesh>
+
+      {/* Squares */}
+      {squares.map((sq, i) => (
+        <mesh
+          key={sq.squareName}
+          position={[sq.position[0], 0.01, sq.position[2]]}
+          onClick={() => onSquareClick(sq.squareName)}
+          receiveShadow
+        >
+          <boxGeometry args={[0.95, 0.02, 0.95]} />
+          <meshStandardMaterial
+            color={sq.isLight ? '#6a5a8a' : '#2a1a4a'}
+            emissive={
+              sq.isSelected ? ALPHA_GOLD :
+              sq.isLegalMove ? '#00ff88' :
+              sq.isLastMoveSquare ? '#ffff00' :
+              sq.isLight ? '#4a3a6a' : '#1a0a2a'
+            }
+            emissiveIntensity={
+              sq.isSelected ? 0.5 :
+              sq.isLegalMove ? 0.4 :
+              sq.isLastMoveSquare ? 0.3 :
+              0.1
+            }
+            metalness={0.5}
+            roughness={0.5}
+          />
+        </mesh>
+      ))}
+
+      {/* Legal move indicators */}
+      {legalMoves?.map((move) => {
+        const col = move.charCodeAt(0) - 97;
+        const row = 8 - parseInt(move[1]);
+        return (
+          <mesh
+            key={`legal-${move}`}
+            position={[col - 3.5, 0.05, row - 3.5]}
+          >
+            <sphereGeometry args={[0.12, 16, 16]} />
+            <meshBasicMaterial
+              color="#00ff88"
+              transparent
+              opacity={0.7}
+            />
+          </mesh>
+        );
+      })}
+
+      {/* Corner rune decorations */}
+      {[[-4.2, 0.01, -4.2], [4.2, 0.01, -4.2], [-4.2, 0.01, 4.2], [4.2, 0.01, 4.2]].map((pos, i) => (
+        <Text
+          key={`corner-${i}`}
+          position={pos}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.5}
+          color={ALPHA_GOLD}
+          anchorX="center"
+          anchorY="middle"
+        >
+          {RUNES[i * 6]}
+        </Text>
+      ))}
+
+      {/* File/Rank labels */}
+      {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((file, i) => (
+        <Text
+          key={`file-${file}`}
+          position={[i - 3.5, 0.01, 4.3]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.25}
+          color={ALPHA_PURPLE}
+          anchorX="center"
+          anchorY="middle"
+        >
+          {file}
+        </Text>
+      ))}
+      {['8', '7', '6', '5', '4', '3', '2', '1'].map((rank, i) => (
+        <Text
+          key={`rank-${rank}`}
+          position={[-4.3, 0.01, i - 3.5]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.25}
+          color={ALPHA_PURPLE}
+          anchorX="center"
+          anchorY="middle"
+        >
+          {rank}
+        </Text>
+      ))}
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NEURAL NETWORK BACKGROUND - Animated neural connections
+// ═══════════════════════════════════════════════════════════════════════
+function NeuralNetworkBackground() {
+  const groupRef = useRef();
+  const nodesRef = useRef([]);
+
+  const nodes = useMemo(() => {
+    return Array.from({ length: 30 }, () => ({
+      position: [
+        (Math.random() - 0.5) * 25,
+        Math.random() * 12 - 4,
+        (Math.random() - 0.5) * 25
+      ],
+      connections: []
+    }));
+  }, []);
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.01;
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      {nodes.map((node, i) => (
+        <group key={i}>
+          {/* Node */}
+          <mesh position={node.position}>
+            <sphereGeometry args={[0.08, 8, 8]} />
+            <meshBasicMaterial color={ALPHA_PURPLE} transparent opacity={0.6} />
+          </mesh>
+          {/* Connections to nearby nodes */}
+          {nodes.slice(i + 1, i + 4).map((target, j) => {
+            const distance = Math.sqrt(
+              Math.pow(target.position[0] - node.position[0], 2) +
+              Math.pow(target.position[1] - node.position[1], 2) +
+              Math.pow(target.position[2] - node.position[2], 2)
+            );
+            if (distance < 8) {
+              return (
+                <line key={`${i}-${j}`}>
+                  <bufferGeometry>
+                    <bufferAttribute
+                      attach="attributes-position"
+                      count={2}
+                      array={new Float32Array([...node.position, ...target.position])}
+                      itemSize={3}
+                    />
+                  </bufferGeometry>
+                  <lineBasicMaterial color={ALPHA_PINK} transparent opacity={0.2} />
+                </line>
+              );
+            }
+            return null;
+          })}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SCENE SETUP - Lighting and environment
+// ═══════════════════════════════════════════════════════════════════════
+function SceneSetup() {
+  return (
+    <>
+      <ambientLight intensity={0.3} />
+      <pointLight position={[0, 10, 0]} intensity={1} color={ALPHA_PURPLE} />
+      <pointLight position={[5, 5, 5]} intensity={0.5} color={ALPHA_GOLD} />
+      <pointLight position={[-5, 5, -5]} intensity={0.5} color={ALPHA_PINK} />
+      <spotLight
+        position={[0, 15, 0]}
+        angle={0.5}
+        penumbra={1}
+        intensity={0.8}
+        color="#ffffff"
+        castShadow
+      />
+      <fog attach="fog" args={['#0a0515', 10, 40]} />
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN 3D CHESS SCENE
+// ═══════════════════════════════════════════════════════════════════════
+function ChessScene({ 
+  position, 
+  onSquareClick, 
+  selectedSquare, 
+  legalMoves, 
+  lastMove,
+  playerColor 
+}) {
+  const game = useMemo(() => {
+    const g = new Chess();
+    g.load(position);
+    return g;
+  }, [position]);
+
+  // Get all pieces from FEN
+  const pieces = useMemo(() => {
+    const result = [];
+    const board = game.board();
+    
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = board[row][col];
+        if (piece) {
+          const squareName = String.fromCharCode(97 + col) + (8 - row);
+          result.push({
+            type: piece.type,
+            color: piece.color,
+            square: squareName,
+            position: [col - 3.5, 0.25, row - 3.5]
+          });
+        }
+      }
+    }
+    return result;
+  }, [game]);
+
+  return (
+    <>
+      <SceneSetup />
+      
+      {/* Background effects */}
+      <NeuralNetworkBackground />
+      <RuneParticles count={40} />
+      
+      {/* Mystical seal */}
+      <RuneSealCircle radius={6} y={-0.6} />
+      
+      {/* Chains */}
+      <ChainSystem />
+      
+      {/* Chess Board */}
+      <ChessBoard3D
+        position={[0, 0, 0]}
+        onSquareClick={onSquareClick}
+        selectedSquare={selectedSquare}
+        legalMoves={legalMoves}
+        lastMove={lastMove}
+      />
+      
+      {/* Chess Pieces */}
+      {pieces.map((piece) => (
+        <ChessPiece3D
+          key={piece.square}
+          type={piece.type}
+          color={piece.color}
+          position={piece.position}
+          isSelected={selectedSquare === piece.square}
+          onClick={() => onSquareClick(piece.square)}
+          lastMoveSquare={lastMove && (lastMove.from === piece.square || lastMove.to === piece.square)}
+        />
+      ))}
+      
+      {/* Camera controls */}
+      <OrbitControls
+        enablePan={false}
+        minDistance={8}
+        maxDistance={20}
+        minPolarAngle={Math.PI / 6}
+        maxPolarAngle={Math.PI / 2.5}
+        target={[0, 0, 0]}
+      />
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════
 function countPieces(fen) {
   let count = 0;
@@ -49,759 +714,95 @@ function getGamePhase(moveNum, fen) {
   return "endgame";
 }
 
-function analyzePositionType(fen) {
-  if (fen.indexOf("+") !== -1) return "tactical";
-  const board = fen.split(' ')[0];
-  if (board.indexOf("pp") !== -1 || board.indexOf("PP") !== -1) {
-    return "positional";
-  }
-  return "normal";
-}
-
-function getEngineSettingsForEnemy(enemyId) {
-  switch (enemyId) {
-    case 'elegant':
-      return { ...ELEGANT_CONFIG, openings: ELEGANT_OPENINGS, style: 'positional' };
-    case 'nonelegant':
-      return { ...NON_ELEGANT_CONFIG, openings: NON_ELEGANT_OPENINGS, style: 'aggressive' };
-    case 'minia0':
-      return { ...MINI_A0_CONFIG, openings: MINI_A0_OPENINGS, style: 'strategic' };
-    default:
-      return { ...ELEGANT_CONFIG, openings: ELEGANT_OPENINGS, style: 'balanced' };
-  }
-}
-
-function getAdaptiveDepthForPosition(currentFen, moveNumber, enemyId) {
-  const settings = getEngineSettingsForEnemy(enemyId);
+function getAdaptiveDepth(currentFen, moveNumber) {
   const phase = getGamePhase(moveNumber, currentFen);
-  const posType = analyzePositionType(currentFen);
-  let depth = settings.baseDepth;
-  if (phase === "opening") depth = settings.openingDepth;
-  else if (phase === "endgame") depth = settings.endgameDepth;
-  else if (phase === "middlegame" || phase === "late-middlegame") {
-    if (posType === "tactical") depth = settings.tacticalDepth;
-    else if (posType === "positional") depth = settings.positionalDepth;
+  const config = ALPHAZERO_CONFIG;
+  
+  switch (phase) {
+    case "opening": return config.openingDepth;
+    case "endgame": return config.endgameDepth;
+    default: return config.baseDepth;
   }
-  return depth;
 }
 
-function getBookMoveForPosition(fen, color, enemyId) {
-  const settings = getEngineSettingsForEnemy(enemyId);
+function getBookMove(fen, color) {
   const fenParts = fen.split(' ');
   const fenKey1 = fenParts.slice(0, 4).join(' ');
   const fenKey2 = fenParts.slice(0, 3).join(' ') + ' -';
-  const fenKey3 = fenParts[0] + ' ' + fenParts[1] + ' ' + fenParts[2] + ' -';
-  let position = settings.openings[fenKey1] || settings.openings[fenKey2] || settings.openings[fenKey3];
+  
+  let position = ALPHAZERO_OPENINGS[fenKey1] || ALPHAZERO_OPENINGS[fenKey2];
   if (!position) return null;
+  
   const moves = color === 'w' ? position.white : position.black;
   if (!moves || moves.length === 0) return null;
-  const aggressionBoost = settings.aggressionFactor || 0.5;
-  let adjustedMoves = moves.map((m, idx) => ({
-    ...m,
-    weight: m.weight * (idx === 0 ? aggressionBoost + 0.15 : 1)
-  }));
-  const totalWeight = adjustedMoves.reduce((sum, m) => sum + m.weight, 0);
+  
+  // Weighted random selection
+  const totalWeight = moves.reduce((sum, m) => sum + m.weight, 0);
   let random = Math.random() * totalWeight;
-  for (let moveOption of adjustedMoves) {
+  
+  for (let moveOption of moves) {
     random -= moveOption.weight;
     if (random <= 0) return moveOption.move;
   }
+  
   return moves[0].move;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// 3D ENVIRONMENT COMPONENTS
+// MAIN COMPONENT - ChessGame3D
 // ═══════════════════════════════════════════════════════════════════════
-
-// Floating particles for dreamy effect
-function DreamParticles({ count = 500 }) {
-  const points = useMemo(() => {
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 100;
-      positions[i * 3 + 1] = Math.random() * 50;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
-    }
-    return positions;
-  }, [count]);
-
-  const ref = useRef();
-  useFrame((state) => {
-    if (ref.current) {
-      ref.current.rotation.y = state.clock.elapsedTime * 0.02;
-    }
-  });
-
-  return (
-    <Points ref={ref} positions={points} stride={3} frustumCulled={false}>
-      <PointMaterial
-        transparent
-        color="#8866ff"
-        size={0.15}
-        sizeAttenuation={true}
-        depthWrite={false}
-        opacity={0.6}
-      />
-    </Points>
-  );
-}
-
-// Animated trees for the environment
-function MagicalTree({ position, scale = 1 }) {
-  const ref = useRef();
-  const offset = useMemo(() => Math.random() * Math.PI * 2, []);
-  
-  useFrame((state) => {
-    if (ref.current) {
-      // Gentle swaying
-      ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.5 + offset) * 0.02;
-    }
-  });
-
-  return (
-    <group ref={ref} position={position} scale={scale}>
-      {/* Trunk */}
-      <mesh position={[0, 1.5, 0]}>
-        <cylinderGeometry args={[0.2, 0.35, 3, 8]} />
-        <meshStandardMaterial color="#4a3728" roughness={0.9} />
-      </mesh>
-      {/* Foliage - multiple layers */}
-      <mesh position={[0, 4, 0]}>
-        <coneGeometry args={[1.5, 3, 8]} />
-        <meshStandardMaterial color="#1a4d2e" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 5.5, 0]}>
-        <coneGeometry args={[1.2, 2.5, 8]} />
-        <meshStandardMaterial color="#2d5a3f" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 6.7, 0]}>
-        <coneGeometry args={[0.8, 2, 8]} />
-        <meshStandardMaterial color="#3d6b4f" roughness={0.8} />
-      </mesh>
-      {/* Magical glow particles */}
-      <Sparkles count={20} scale={3} size={2} speed={0.3} color="#88ffaa" position={[0, 4, 0]} />
-    </group>
-  );
-}
-
-// Small creature - rabbit-like
-function SmallCreature({ position }) {
-  const ref = useRef();
-  const [targetPos, setTargetPos] = useState(position);
-  const currentPos = useRef(new THREE.Vector3(...position));
-  
-  useFrame((state, delta) => {
-    if (ref.current) {
-      // Gentle hopping animation
-      ref.current.position.y = position[1] + Math.abs(Math.sin(state.clock.elapsedTime * 2)) * 0.1;
-      
-      // Occasionally move to new position
-      if (Math.random() < 0.002) {
-        setTargetPos([
-          position[0] + (Math.random() - 0.5) * 5,
-          position[1],
-          position[2] + (Math.random() - 0.5) * 5
-        ]);
-      }
-      
-      // Smoothly move towards target
-      currentPos.current.lerp(new THREE.Vector3(...targetPos), delta * 0.5);
-      ref.current.position.x = currentPos.current.x;
-      ref.current.position.z = currentPos.current.z;
-      
-      // Face movement direction
-      const dir = new THREE.Vector3(targetPos[0] - ref.current.position.x, 0, targetPos[2] - ref.current.position.z);
-      if (dir.length() > 0.1) {
-        ref.current.rotation.y = Math.atan2(dir.x, dir.z);
-      }
-    }
-  });
-
-  return (
-    <group ref={ref} position={position} scale={0.3}>
-      {/* Body */}
-      <mesh position={[0, 0.3, 0]}>
-        <sphereGeometry args={[0.4, 16, 16]} />
-        <meshStandardMaterial color="#e8d5c4" roughness={0.9} />
-      </mesh>
-      {/* Head */}
-      <mesh position={[0, 0.6, 0.3]}>
-        <sphereGeometry args={[0.25, 16, 16]} />
-        <meshStandardMaterial color="#f0e6dc" roughness={0.9} />
-      </mesh>
-      {/* Ears */}
-      <mesh position={[-0.1, 0.9, 0.2]} rotation={[0.3, 0, -0.2]}>
-        <capsuleGeometry args={[0.05, 0.3, 4, 8]} />
-        <meshStandardMaterial color="#f5ebe0" roughness={0.9} />
-      </mesh>
-      <mesh position={[0.1, 0.9, 0.2]} rotation={[0.3, 0, 0.2]}>
-        <capsuleGeometry args={[0.05, 0.3, 4, 8]} />
-        <meshStandardMaterial color="#f5ebe0" roughness={0.9} />
-      </mesh>
-    </group>
-  );
-}
-
-// Butterfly creature
-function Butterfly({ position }) {
-  const ref = useRef();
-  const startPos = useMemo(() => new THREE.Vector3(...position), [position]);
-  const color = useMemo(() => 
-    ['#ff88dd', '#88ddff', '#ffdd88', '#88ffbb'][Math.floor(Math.random() * 4)],
-  []);
-  
-  useFrame((state) => {
-    if (ref.current) {
-      const t = state.clock.elapsedTime;
-      // Fluttering path
-      ref.current.position.x = startPos.x + Math.sin(t * 0.5) * 3;
-      ref.current.position.y = startPos.y + Math.sin(t * 0.7) * 2;
-      ref.current.position.z = startPos.z + Math.cos(t * 0.4) * 3;
-      // Wing flapping
-      ref.current.children.forEach((wing, i) => {
-        if (wing.name === 'wing') {
-          wing.rotation.y = Math.sin(t * 15) * 0.8 * (i === 0 ? 1 : -1);
-        }
-      });
-    }
-  });
-
-  return (
-    <group ref={ref} position={position} scale={0.15}>
-      {/* Body */}
-      <mesh>
-        <capsuleGeometry args={[0.1, 0.5, 4, 8]} />
-        <meshStandardMaterial color="#333" roughness={0.8} />
-      </mesh>
-      {/* Wings */}
-      <mesh name="wing" position={[-0.3, 0, 0]}>
-        <planeGeometry args={[0.8, 0.6]} />
-        <meshStandardMaterial color={color} side={THREE.DoubleSide} transparent opacity={0.8} />
-      </mesh>
-      <mesh name="wing" position={[0.3, 0, 0]}>
-        <planeGeometry args={[0.8, 0.6]} />
-        <meshStandardMaterial color={color} side={THREE.DoubleSide} transparent opacity={0.8} />
-      </mesh>
-    </group>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// 3D CHESS BOARD
-// ═══════════════════════════════════════════════════════════════════════
-
-// Rune symbol component
-function RuneSymbol({ position, rotation = [0, 0, 0] }) {
-  const symbols = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛇ', 'ᛈ', 'ᛉ', 'ᛊ'];
-  const symbol = useMemo(() => symbols[Math.floor(Math.random() * symbols.length)], []);
-  const ref = useRef();
-  
-  useFrame((state) => {
-    if (ref.current) {
-      ref.current.material.emissiveIntensity = 0.5 + Math.sin(state.clock.elapsedTime * 2 + position[0]) * 0.3;
-    }
-  });
-
-  return (
-    <mesh ref={ref} position={position} rotation={rotation}>
-      <planeGeometry args={[0.3, 0.3]} />
-      <meshStandardMaterial 
-        color="#8844ff"
-        emissive="#8844ff"
-        emissiveIntensity={0.5}
-        transparent
-        opacity={0.8}
-      />
-    </mesh>
-  );
-}
-
-// Chess piece 3D model
-function ChessPiece3D({ type, color, position, isSelected, onClick, lastMove }) {
-  const ref = useRef();
-  const isLight = color === 'w';
-  const pieceColor = isLight ? '#f0e6d8' : '#2a1a0a';
-  const emissiveColor = isLight ? '#ffddbb' : '#442200';
-  
-  const isLastMoveSquare = lastMove && 
-    (lastMove.to === position.square || lastMove.from === position.square);
-  
-  useFrame((state) => {
-    if (ref.current) {
-      // Hover/selection effect
-      if (isSelected) {
-        ref.current.position.y = position.y + Math.sin(state.clock.elapsedTime * 3) * 0.1 + 0.3;
-        ref.current.rotation.y += 0.02;
-      } else {
-        ref.current.position.y = THREE.MathUtils.lerp(ref.current.position.y, position.y, 0.1);
-      }
-    }
-  });
-
-  const pieceHeight = {
-    'p': 0.4, 'r': 0.6, 'n': 0.65, 'b': 0.7, 'q': 0.85, 'k': 0.9
-  }[type] || 0.5;
-
-  const PieceMesh = () => {
-    switch(type) {
-      case 'p': // Pawn
-        return (
-          <group>
-            <mesh position={[0, 0.15, 0]}>
-              <cylinderGeometry args={[0.2, 0.25, 0.1, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.3, 0]}>
-              <cylinderGeometry args={[0.12, 0.18, 0.2, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.45, 0]}>
-              <sphereGeometry args={[0.1, 16, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-          </group>
-        );
-      case 'r': // Rook
-        return (
-          <group>
-            <mesh position={[0, 0.15, 0]}>
-              <cylinderGeometry args={[0.22, 0.27, 0.1, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.35, 0]}>
-              <cylinderGeometry args={[0.18, 0.22, 0.3, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.55, 0]}>
-              <cylinderGeometry args={[0.2, 0.18, 0.15, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-          </group>
-        );
-      case 'n': // Knight
-        return (
-          <group>
-            <mesh position={[0, 0.15, 0]}>
-              <cylinderGeometry args={[0.22, 0.27, 0.1, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.35, 0.05]} rotation={[0.3, 0, 0]}>
-              <boxGeometry args={[0.2, 0.4, 0.15]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.5, 0.15]} rotation={[0.6, 0, 0]}>
-              <boxGeometry args={[0.15, 0.25, 0.12]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-          </group>
-        );
-      case 'b': // Bishop
-        return (
-          <group>
-            <mesh position={[0, 0.15, 0]}>
-              <cylinderGeometry args={[0.22, 0.27, 0.1, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.35, 0]}>
-              <cylinderGeometry args={[0.1, 0.2, 0.3, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.55, 0]}>
-              <sphereGeometry args={[0.12, 16, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.7, 0]}>
-              <sphereGeometry args={[0.06, 16, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-          </group>
-        );
-      case 'q': // Queen
-        return (
-          <group>
-            <mesh position={[0, 0.15, 0]}>
-              <cylinderGeometry args={[0.25, 0.3, 0.1, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.4, 0]}>
-              <cylinderGeometry args={[0.12, 0.23, 0.4, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.65, 0]}>
-              <sphereGeometry args={[0.15, 16, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.8, 0]}>
-              <sphereGeometry args={[0.08, 16, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.4} roughness={0.4} emissive="#ffaa00" emissiveIntensity={0.3} />
-            </mesh>
-          </group>
-        );
-      case 'k': // King
-        return (
-          <group>
-            <mesh position={[0, 0.15, 0]}>
-              <cylinderGeometry args={[0.25, 0.3, 0.1, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.4, 0]}>
-              <cylinderGeometry args={[0.15, 0.23, 0.4, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.65, 0]}>
-              <cylinderGeometry args={[0.12, 0.15, 0.15, 16]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.3} roughness={0.5} />
-            </mesh>
-            {/* Cross on top */}
-            <mesh position={[0, 0.8, 0]}>
-              <boxGeometry args={[0.05, 0.2, 0.05]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.4} roughness={0.4} emissive="#ffdd00" emissiveIntensity={0.2} />
-            </mesh>
-            <mesh position={[0, 0.85, 0]}>
-              <boxGeometry args={[0.15, 0.05, 0.05]} />
-              <meshStandardMaterial color={pieceColor} metalness={0.4} roughness={0.4} emissive="#ffdd00" emissiveIntensity={0.2} />
-            </mesh>
-          </group>
-        );
-      default:
-        return (
-          <mesh>
-            <sphereGeometry args={[0.2, 16, 16]} />
-            <meshStandardMaterial color={pieceColor} />
-          </mesh>
-        );
-    }
-  };
-
-  return (
-    <group 
-      ref={ref} 
-      position={[position.x, position.y, position.z]}
-      onClick={onClick}
-    >
-      <PieceMesh />
-      {/* Selection glow */}
-      {isSelected && (
-        <mesh position={[0, 0.01, 0]}>
-          <ringGeometry args={[0.3, 0.4, 32]} />
-          <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={2} transparent opacity={0.8} side={THREE.DoubleSide} />
-        </mesh>
-      )}
-      {/* Last move highlight */}
-      {isLastMoveSquare && !isSelected && (
-        <mesh position={[0, 0.01, 0]}>
-          <ringGeometry args={[0.35, 0.42, 32]} />
-          <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={1} transparent opacity={0.5} side={THREE.DoubleSide} />
-        </mesh>
-      )}
-    </group>
-  );
-}
-
-// Main chess board component
-function ChessBoard3D({ game, playerColor, selectedSquare, onSquareClick, lastMove, validMoves }) {
-  const boardRef = useRef();
-  
-  useFrame((state) => {
-    if (boardRef.current) {
-      // Gentle floating animation
-      boardRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
-    }
-  });
-
-  // Generate board squares and pieces
-  const squares = [];
-  const pieces = [];
-  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-  const ranks = ['1', '2', '3', '4', '5', '6', '7', '8'];
-  
-  // Determine board orientation based on player color
-  const isFlipped = playerColor === 'black';
-  
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const file = files[col];
-      const rank = ranks[row];
-      const square = `${file}${rank}`;
-      
-      // Position calculation (center the board)
-      const x = (col - 3.5) * 0.6;
-      const z = (isFlipped ? (7 - row) - 3.5 : row - 3.5) * 0.6;
-      
-      const isLight = (row + col) % 2 === 0;
-      const isSelected = selectedSquare === square;
-      const isValidMove = validMoves.includes(square);
-      const isLastMove = lastMove && (lastMove.from === square || lastMove.to === square);
-      
-      // Square
-      squares.push(
-        <mesh
-          key={`square-${square}`}
-          position={[x, 0, z]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          onClick={() => onSquareClick(square)}
-        >
-          <planeGeometry args={[0.58, 0.58]} />
-          <meshStandardMaterial 
-            color={isSelected ? '#00ff88' : isValidMove ? '#44ff88' : isLastMove ? '#ffff44' : isLight ? '#c4a77d' : '#6b4423'}
-            metalness={0.1}
-            roughness={0.8}
-            emissive={isSelected ? '#00ff44' : isValidMove ? '#22aa44' : '#000000'}
-            emissiveIntensity={isSelected ? 0.5 : isValidMove ? 0.3 : 0}
-          />
-        </mesh>
-      );
-      
-      // Get piece at square
-      const piece = game.get(square);
-      if (piece) {
-        pieces.push(
-          <ChessPiece3D
-            key={`piece-${square}`}
-            type={piece.type}
-            color={piece.color}
-            position={{ x, y: 0.1, z, square }}
-            isSelected={isSelected}
-            onClick={() => onSquareClick(square)}
-            lastMove={lastMove}
-          />
-        );
-      }
-    }
-  }
-  
-  // Runes around the board
-  const runes = [];
-  for (let i = 0; i < 32; i++) {
-    const angle = (i / 32) * Math.PI * 2;
-    const radius = 3.2;
-    runes.push(
-      <RuneSymbol
-        key={`rune-${i}`}
-        position={[Math.cos(angle) * radius, 0.05, Math.sin(angle) * radius]}
-        rotation={[-Math.PI / 2, 0, angle + Math.PI / 2]}
-      />
-    );
-  }
-
-  return (
-    <Float speed={1} rotationIntensity={0.1} floatIntensity={0.3}>
-      <group ref={boardRef}>
-        {/* Board base with rune engravings */}
-        <mesh position={[0, -0.15, 0]}>
-          <boxGeometry args={[5.2, 0.3, 5.2]} />
-          <meshStandardMaterial 
-            color="#2a1a3a"
-            metalness={0.5}
-            roughness={0.3}
-            emissive="#4422aa"
-            emissiveIntensity={0.1}
-          />
-        </mesh>
-        
-        {/* Glowing edge */}
-        <mesh position={[0, -0.05, 0]}>
-          <boxGeometry args={[5.3, 0.1, 5.3]} />
-          <meshStandardMaterial 
-            color="#6633ff"
-            emissive="#6633ff"
-            emissiveIntensity={0.5}
-            transparent
-            opacity={0.6}
-          />
-        </mesh>
-        
-        {/* Board squares */}
-        <group position={[0, 0.01, 0]}>
-          {squares}
-        </group>
-        
-        {/* Pieces */}
-        {pieces}
-        
-        {/* Runes */}
-        {runes}
-        
-        {/* Magical aura beneath board */}
-        <Sparkles 
-          count={100} 
-          scale={6} 
-          size={3} 
-          speed={0.5} 
-          color="#aa66ff" 
-          position={[0, -0.5, 0]}
-        />
-      </group>
-    </Float>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// MAIN 3D SCENE
-// ═══════════════════════════════════════════════════════════════════════
-
-function Scene3D({ game, playerColor, selectedSquare, onSquareClick, lastMove, validMoves, enemyColor }) {
-  return (
-    <>
-      {/* Lighting */}
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 20, 10]} intensity={1} castShadow />
-      <pointLight position={[-10, 10, -10]} intensity={0.5} color="#8866ff" />
-      <pointLight position={[10, 10, 10]} intensity={0.5} color="#ff8866" />
-      
-      {/* Sky and environment */}
-      <Sky 
-        distance={450000}
-        sunPosition={[5, 1, 8]}
-        inclination={0.5}
-        azimuth={0.25}
-        rayleigh={0.5}
-      />
-      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-      
-      {/* Clouds */}
-      <Cloud position={[-20, 15, -10]} speed={0.2} opacity={0.5} />
-      <Cloud position={[20, 18, 10]} speed={0.2} opacity={0.4} />
-      <Cloud position={[0, 20, -20]} speed={0.2} opacity={0.6} />
-      
-      {/* Dream particles */}
-      <DreamParticles count={300} />
-      
-      {/* Trees */}
-      <MagicalTree position={[-15, 0, -15]} scale={1.2} />
-      <MagicalTree position={[18, 0, -12]} scale={0.9} />
-      <MagicalTree position={[-20, 0, 10]} scale={1.1} />
-      <MagicalTree position={[15, 0, 15]} scale={0.8} />
-      <MagicalTree position={[-8, 0, -20]} scale={1.0} />
-      <MagicalTree position={[22, 0, 5]} scale={1.3} />
-      
-      {/* Small creatures */}
-      <SmallCreature position={[-10, 0, 8]} />
-      <SmallCreature position={[12, 0, -8]} />
-      <SmallCreature position={[-5, 0, 15]} />
-      
-      {/* Butterflies */}
-      <Butterfly position={[5, 5, 5]} />
-      <Butterfly position={[-8, 6, -3]} />
-      <Butterfly position={[3, 4, -6]} />
-      
-      {/* Ground plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -5, 0]} receiveShadow>
-        <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial color="#1a3d2e" roughness={1} />
-      </mesh>
-      
-      {/* Grass patches */}
-      {Array.from({ length: 50 }).map((_, i) => (
-        <mesh 
-          key={`grass-${i}`}
-          position={[
-            (Math.random() - 0.5) * 60,
-            -4.9,
-            (Math.random() - 0.5) * 60
-          ]}
-          rotation={[-Math.PI / 2, 0, Math.random() * Math.PI]}
-        >
-          <circleGeometry args={[0.5 + Math.random() * 1.5, 8]} />
-          <meshStandardMaterial color="#2d5a3f" roughness={1} />
-        </mesh>
-      ))}
-      
-      {/* Chess board */}
-      <ChessBoard3D 
-        game={game}
-        playerColor={playerColor}
-        selectedSquare={selectedSquare}
-        onSquareClick={onSquareClick}
-        lastMove={lastMove}
-        validMoves={validMoves}
-      />
-      
-      {/* Camera controls */}
-      <OrbitControls 
-        enablePan={false}
-        minDistance={5}
-        maxDistance={20}
-        minPolarAngle={Math.PI / 6}
-        maxPolarAngle={Math.PI / 2.5}
-        target={[0, 0, 0]}
-      />
-    </>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════
-
-const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-
-const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
+const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack }) => {
   const gameRef = useRef(null);
   if (gameRef.current === null) {
     gameRef.current = new Chess();
   }
-  
+
   const [position, setPosition] = useState(STARTING_FEN);
-  const [selectedSquare, setSelectedSquare] = useState(null);
-  const [validMoves, setValidMoves] = useState([]);
   const [isThinking, setIsThinking] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [gameStatus, setGameStatus] = useState('playing');
   const [lastMove, setLastMove] = useState(null);
+  const [selectedSquare, setSelectedSquare] = useState(null);
+  const [legalMoves, setLegalMoves] = useState([]);
   const [capturedPieces, setCapturedPieces] = useState({ white: [], black: [] });
-  const [isMobile, setIsMobile] = useState(false);
   const [currentTurn, setCurrentTurn] = useState('w');
-  const [isInCheck, setIsInCheck] = useState(false);
   
   const stockfishRef = useRef(null);
   const isEngineReady = useRef(false);
   const moveCountRef = useRef(0);
   const hasInitializedEngineMove = useRef(false);
-  
-  // Refs for callbacks
+
+  // Refs for state setters
   const setPositionRef = useRef(setPosition);
   const setCurrentTurnRef = useRef(setCurrentTurn);
-  const setIsInCheckRef = useRef(setIsInCheck);
   const setMoveHistoryRef = useRef(setMoveHistory);
   const setLastMoveRef = useRef(setLastMove);
   const setCapturedPiecesRef = useRef(setCapturedPieces);
   const setGameStatusRef = useRef(setGameStatus);
   const setIsThinkingRef = useRef(setIsThinking);
-  const enemyRef = useRef(enemy);
   const playerColorRef = useRef(playerColor);
-  const gameStatusRef = useRef(gameStatus);
   const onGameEndRef = useRef(onGameEnd);
 
   useEffect(() => {
-    enemyRef.current = enemy;
-    playerColorRef.current = playerColor;
-    gameStatusRef.current = gameStatus;
-    onGameEndRef.current = onGameEnd;
     setPositionRef.current = setPosition;
     setCurrentTurnRef.current = setCurrentTurn;
-    setIsInCheckRef.current = setIsInCheck;
     setMoveHistoryRef.current = setMoveHistory;
     setLastMoveRef.current = setLastMove;
     setCapturedPiecesRef.current = setCapturedPieces;
     setGameStatusRef.current = setGameStatus;
     setIsThinkingRef.current = setIsThinking;
+    playerColorRef.current = playerColor;
+    onGameEndRef.current = onGameEnd;
   });
 
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Stockfish engine setup
+  // Initialize Stockfish
   useEffect(() => {
     stockfishRef.current = new Worker('/stockfish.js');
     let pendingCallback = null;
 
     stockfishRef.current.onmessage = (event) => {
       const line = event.data;
+
       if (line === 'uciok') {
         stockfishRef.current.postMessage('isready');
       } else if (line === 'readyok') {
@@ -831,16 +832,21 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
       const promotion = moveStr.length > 4 ? moveStr[4] : undefined;
 
       try {
-        const moveResult = game.move({ from, to, promotion: promotion || 'q' });
+        const moveResult = game.move({
+          from,
+          to,
+          promotion: promotion || 'q'
+        });
+
         if (moveResult) {
           moveCountRef.current++;
           const newFen = game.fen();
+
           setPositionRef.current(newFen);
           setCurrentTurnRef.current(game.turn());
-          setIsInCheckRef.current(game.isCheck() && !game.isCheckmate());
           setMoveHistoryRef.current(prev => [...prev, moveResult.san]);
           setLastMoveRef.current({ from, to });
-          
+
           if (moveResult.captured) {
             const capturedColor = moveResult.color === 'w' ? 'black' : 'white';
             setCapturedPiecesRef.current(prev => ({
@@ -853,8 +859,8 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
             let result;
             if (game.isCheckmate()) {
               const loser = game.turn();
-              const playerWon = (playerColorRef.current === 'white' && loser === 'b') || 
-                               (playerColorRef.current === 'black' && loser === 'w');
+              const playerWon = (playerColorRef.current === 'white' && loser === 'b') ||
+                (playerColorRef.current === 'black' && loser === 'w');
               result = playerWon ? 'player' : 'enemy';
             } else {
               result = 'draw';
@@ -870,23 +876,19 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
 
     function makeEngineMove() {
       const game = gameRef.current;
-      if (!stockfishRef.current || !isEngineReady.current || game.isGameOver()) return;
+      if (!stockfishRef.current || !isEngineReady.current) return;
+      if (game.isGameOver()) return;
 
-      const currentEnemyId = enemyRef.current?.id;
-      const currentPlayerColor = playerColorRef.current;
-      const settings = getEngineSettingsForEnemy(currentEnemyId);
-      const engineColor = currentPlayerColor === 'white' ? 'b' : 'w';
       const currentMoveNumber = moveCountRef.current;
       const currentFen = game.fen();
+      const engineColor = playerColorRef.current === 'white' ? 'b' : 'w';
 
-      const openingBookDepth = currentEnemyId === 'minia0' ? 12 : (currentEnemyId === 'elegant' ? 10 : 8);
-      if (currentMoveNumber <= openingBookDepth) {
-        const bookMove = getBookMoveForPosition(currentFen, engineColor, currentEnemyId);
+      // Try book move first
+      if (currentMoveNumber <= 12) {
+        const bookMove = getBookMove(currentFen, engineColor);
         if (bookMove) {
-          const minTime = settings.thinkingTimeMin || 150;
-          const maxTime = settings.thinkingTimeMax || 800;
-          const thinkTime = minTime + Math.random() * (maxTime - minTime) * (settings.openingSpeed || 0.5);
           setIsThinkingRef.current(true);
+          const thinkTime = 200 + Math.random() * 600;
           setTimeout(() => {
             applyEngineMove(bookMove);
             setIsThinkingRef.current(false);
@@ -896,11 +898,11 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
       }
 
       setIsThinkingRef.current(true);
-      const adaptiveDepth = getAdaptiveDepthForPosition(currentFen, currentMoveNumber, currentEnemyId);
-      const skillLevel = currentEnemyId === 'minia0' ? 15 : 20;
+      const adaptiveDepth = getAdaptiveDepth(currentFen, currentMoveNumber);
 
-      stockfishRef.current.postMessage(`setoption name Skill Level value ${skillLevel}`);
-      stockfishRef.current.postMessage(`setoption name Contempt value ${settings.contempt || 24}`);
+      stockfishRef.current.postMessage('setoption name Skill Level value 20');
+      stockfishRef.current.postMessage(`setoption name Contempt value ${ALPHAZERO_CONFIG.contempt}`);
+
       pendingCallback = applyEngineMove;
       stockfishRef.current.postMessage(`position fen ${currentFen}`);
       stockfishRef.current.postMessage(`go depth ${adaptiveDepth}`);
@@ -909,7 +911,9 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
     stockfishRef.current.makeEngineMove = makeEngineMove;
 
     return () => {
-      if (stockfishRef.current) stockfishRef.current.terminate();
+      if (stockfishRef.current) {
+        stockfishRef.current.terminate();
+      }
     };
   }, []);
 
@@ -919,89 +923,81 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
 
     const game = gameRef.current;
     const turn = game.turn();
-    const isPlayerTurn = (playerColor === 'white' && turn === 'w') || 
-                        (playerColor === 'black' && turn === 'b');
+    const isPlayerTurn = (playerColor === 'white' && turn === 'w') ||
+      (playerColor === 'black' && turn === 'b');
 
     if (!isPlayerTurn) return;
 
     const piece = game.get(square);
 
+    // If a piece is already selected
     if (selectedSquare) {
       // Try to make a move
-      if (validMoves.includes(square)) {
-        try {
-          const moveResult = game.move({
-            from: selectedSquare,
-            to: square,
-            promotion: 'q'
-          });
+      try {
+        const moveResult = game.move({
+          from: selectedSquare,
+          to: square,
+          promotion: 'q'
+        });
 
-          if (moveResult) {
-            moveCountRef.current++;
-            const newFen = game.fen();
-            setPosition(newFen);
-            setCurrentTurn(game.turn());
-            setIsInCheck(game.isCheck() && !game.isCheckmate());
-            setMoveHistory(prev => [...prev, moveResult.san]);
-            setLastMove({ from: selectedSquare, to: square });
-            setSelectedSquare(null);
-            setValidMoves([]);
+        if (moveResult) {
+          moveCountRef.current++;
+          const newFen = game.fen();
 
-            if (moveResult.captured) {
-              const capturedColor = moveResult.color === 'w' ? 'black' : 'white';
-              setCapturedPieces(prev => ({
-                ...prev,
-                [capturedColor]: [...prev[capturedColor], moveResult.captured]
-              }));
+          setPosition(newFen);
+          setCurrentTurn(game.turn());
+          setMoveHistory(prev => [...prev, moveResult.san]);
+          setLastMove({ from: selectedSquare, to: square });
+          setSelectedSquare(null);
+          setLegalMoves([]);
+
+          if (moveResult.captured) {
+            const capturedColor = moveResult.color === 'w' ? 'black' : 'white';
+            setCapturedPieces(prev => ({
+              ...prev,
+              [capturedColor]: [...prev[capturedColor], moveResult.captured]
+            }));
+          }
+
+          if (game.isGameOver()) {
+            let result;
+            if (game.isCheckmate()) {
+              const loser = game.turn();
+              const playerWon = (playerColor === 'white' && loser === 'b') ||
+                (playerColor === 'black' && loser === 'w');
+              result = playerWon ? 'player' : 'enemy';
+            } else {
+              result = 'draw';
             }
-
-            if (game.isGameOver()) {
-              let result;
-              if (game.isCheckmate()) {
-                const loser = game.turn();
-                const playerWon = (playerColor === 'white' && loser === 'b') || 
-                                 (playerColor === 'black' && loser === 'w');
-                result = playerWon ? 'player' : 'enemy';
-              } else {
-                result = 'draw';
-              }
-              setGameStatus('ended');
-              setTimeout(() => onGameEnd(result), 1500);
-              return;
-            }
-
-            setTimeout(() => {
-              if (stockfishRef.current?.makeEngineMove) {
-                stockfishRef.current.makeEngineMove();
-              }
-            }, 300);
+            setGameStatus('ended');
+            setTimeout(() => onGameEnd(result), 1500);
             return;
           }
-        } catch (e) {
-          console.error('Move error:', e);
+
+          // Trigger engine move
+          setTimeout(() => {
+            if (stockfishRef.current?.makeEngineMove) {
+              stockfishRef.current.makeEngineMove();
+            }
+          }, 300);
+          return;
         }
-      }
-
-      // If clicked on own piece, select it instead
-      if (piece && piece.color === (playerColor === 'white' ? 'w' : 'b')) {
-        setSelectedSquare(square);
-        const moves = game.moves({ square, verbose: true });
-        setValidMoves(moves.map(m => m.to));
-        return;
-      }
-
-      // Deselect
-      setSelectedSquare(null);
-      setValidMoves([]);
-    } else {
-      // Select a piece
-      if (piece && piece.color === (playerColor === 'white' ? 'w' : 'b')) {
-        setSelectedSquare(square);
-        const moves = game.moves({ square, verbose: true });
-        setValidMoves(moves.map(m => m.to));
+      } catch (e) {
+        // Invalid move, continue to piece selection logic
       }
     }
-  }, [selectedSquare, validMoves, isThinking, gameStatus, playerColor, onGameEnd]);
+
+    // Select a piece
+    if (piece && piece.color === turn) {
+      setSelectedSquare(square);
+      // Get legal moves for this piece
+      const moves = game.moves({ square, verbose: true });
+      setLegalMoves(moves.map(m => m.to));
+    } else {
+      setSelectedSquare(null);
+      setLegalMoves([]);
+    }
+  }, [selectedSquare, isThinking, gameStatus, playerColor, onGameEnd]);
 
   // Reset game
   const resetGame = useCallback(() => {
@@ -1011,14 +1007,13 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
     hasInitializedEngineMove.current = false;
     setPosition(newGame.fen());
     setCurrentTurn('w');
-    setIsInCheck(false);
     setMoveHistory([]);
     setGameStatus('playing');
     setLastMove(null);
+    setSelectedSquare(null);
+    setLegalMoves([]);
     setCapturedPieces({ white: [], black: [] });
     setIsThinking(false);
-    setSelectedSquare(null);
-    setValidMoves([]);
 
     if (playerColor === 'black') {
       hasInitializedEngineMove.current = true;
@@ -1030,11 +1025,13 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
     }
   }, [playerColor]);
 
+  // Resign
   const handleResign = () => {
     setGameStatus('ended');
     onGameEnd('enemy');
   };
 
+  // Get piece symbols
   const getPieceSymbol = (piece, color) => {
     const symbols = {
       white: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕' },
@@ -1043,216 +1040,231 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack, onSwitch2D }) => {
     return symbols[color]?.[piece] || '';
   };
 
-  const isPlayerTurn = (playerColor === 'white' && currentTurn === 'w') || 
-                       (playerColor === 'black' && currentTurn === 'b');
+  const isPlayerTurn = (playerColor === 'white' && currentTurn === 'w') ||
+    (playerColor === 'black' && currentTurn === 'b');
 
   return (
-    <div className="fixed inset-0 w-full h-full" data-testid="chess-game-3d-container">
+    <div 
+      className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #0a0515 0%, #1a0a3a 50%, #0a0515 100%)' }}
+      data-testid="chess-game-3d-container"
+    >
       {/* 3D Canvas */}
-      <Canvas
-        camera={{ position: [0, 8, 10], fov: 50 }}
-        shadows
-        style={{ background: 'linear-gradient(180deg, #0a0520 0%, #1a0a40 50%, #0a0520 100%)' }}
-      >
-        <Suspense fallback={null}>
-          <Scene3D
-            game={gameRef.current}
-            playerColor={playerColor}
-            selectedSquare={selectedSquare}
-            onSquareClick={handleSquareClick}
-            lastMove={lastMove}
-            validMoves={validMoves}
-            enemyColor={enemy?.color}
-          />
-        </Suspense>
-      </Canvas>
+      <div className="absolute inset-0">
+        <Canvas
+          shadows
+          camera={{ position: [0, 12, 12], fov: 50 }}
+          gl={{ antialias: true }}
+        >
+          <Suspense fallback={null}>
+            <ChessScene
+              position={position}
+              onSquareClick={handleSquareClick}
+              selectedSquare={selectedSquare}
+              legalMoves={legalMoves}
+              lastMove={lastMove}
+              playerColor={playerColor}
+            />
+          </Suspense>
+        </Canvas>
+      </div>
 
       {/* UI Overlay */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start pointer-events-none">
-        {/* Left Panel - Enemy Info */}
-        <div 
-          className="pointer-events-auto rounded-lg p-3 max-w-xs"
-          style={{
-            background: 'linear-gradient(180deg, rgba(20,10,40,0.95) 0%, rgba(10,5,25,0.98) 100%)',
-            border: `1px solid ${enemy?.color || '#8844ff'}40`,
-            backdropFilter: 'blur(10px)'
-          }}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            {enemy?.avatar === '👁' ? (
-              <SneakyEyeTracker size="small" glowColor={enemy?.color} useImage={true} />
-            ) : (
-              <span className="text-2xl" style={{ filter: `drop-shadow(0 0 8px ${enemy?.color})` }}>
-                {enemy?.avatar}
-              </span>
-            )}
+      <div className="absolute top-0 left-0 right-0 p-4 z-10">
+        <div className="flex items-center justify-between max-w-4xl mx-auto">
+          {/* Enemy Info */}
+          <div
+            className="flex items-center gap-3 px-4 py-2 rounded-lg"
+            style={{
+              background: 'linear-gradient(180deg, rgba(40,20,60,0.95) 0%, rgba(20,10,35,0.98) 100%)',
+              border: '1px solid rgba(191, 0, 255, 0.3)',
+              boxShadow: '0 0 20px rgba(191, 0, 255, 0.2)'
+            }}
+          >
+            <SneakyEyeTracker
+              size="small"
+              glowColor={ALPHA_PURPLE}
+              useImage={true}
+            />
             <div>
-              <h3 className="text-sm font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: enemy?.color }}>
-                {enemy?.name}
+              <h3
+                className="text-sm font-bold tracking-wide"
+                style={{ fontFamily: 'Orbitron, sans-serif', color: ALPHA_PURPLE }}
+              >
+                {enemy?.name || 'ALPHAZERO'}
               </h3>
-              <p className="text-xs text-gray-500" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                {enemy?.difficulty}
+              <p className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', color: ALPHA_GOLD }}>
+                3D NEURAL MODE
               </p>
             </div>
           </div>
 
           {/* Turn Indicator */}
-          <div 
-            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg mb-3 ${isThinking ? 'animate-pulse' : ''}`}
+          <div
+            className={`px-4 py-2 rounded-lg ${isThinking ? 'animate-pulse' : ''}`}
             style={{
-              background: isPlayerTurn 
+              background: isPlayerTurn
                 ? 'linear-gradient(135deg, #00ff8830 0%, #00ff4415 100%)'
-                : `linear-gradient(135deg, ${enemy?.color}30 0%, ${enemy?.color}15 100%)`,
-              border: `1px solid ${isPlayerTurn ? '#00ff8850' : enemy?.color + '50'}`
+                : `linear-gradient(135deg, ${ALPHA_PURPLE}30 0%, ${ALPHA_PURPLE}15 100%)`,
+              border: `1px solid ${isPlayerTurn ? '#00ff8850' : ALPHA_PURPLE + '50'}`
             }}
           >
             {isThinking ? (
-              <>
-                <Zap size={14} className="animate-pulse" style={{ color: enemy?.color }} />
-                <span style={{ fontFamily: 'Orbitron, sans-serif', color: enemy?.color, fontSize: '11px' }}>
-                  THINKING...
-                </span>
-              </>
+              <span style={{ fontFamily: 'Orbitron, sans-serif', color: ALPHA_PURPLE, fontSize: '12px' }}>
+                <Zap size={14} className="inline animate-pulse mr-2" />
+                NEURAL PROCESSING...
+              </span>
             ) : (
-              <span style={{ fontFamily: 'Orbitron, sans-serif', color: isPlayerTurn ? '#00ff88' : enemy?.color, fontSize: '11px' }}>
-                {isPlayerTurn ? 'YOUR TURN' : 'OPPONENT'}
+              <span
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: isPlayerTurn ? '#00ff88' : ALPHA_PURPLE,
+                  fontSize: '12px'
+                }}
+              >
+                {isPlayerTurn ? 'YOUR TURN' : 'ALPHAZERO'}
               </span>
             )}
           </div>
 
-          {/* Captured Pieces */}
-          <div className="mb-3">
-            <h4 className="text-xs text-gray-500 mb-1" style={{ fontFamily: 'Rajdhani, sans-serif' }}>CAPTURED</h4>
-            <div className="flex flex-wrap gap-0.5 min-h-[20px] p-1.5 rounded bg-black/30 text-sm">
-              {capturedPieces[playerColor === 'white' ? 'black' : 'white'].map((piece, i) => (
-                <span key={i}>{getPieceSymbol(piece, playerColor === 'white' ? 'black' : 'white')}</span>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-0.5 min-h-[20px] p-1.5 rounded bg-white/5 mt-1 text-sm">
-              {capturedPieces[playerColor].map((piece, i) => (
-                <span key={i}>{getPieceSymbol(piece, playerColor)}</span>
-              ))}
-            </div>
-          </div>
-
-          {/* Control Buttons */}
-          <div className="flex flex-wrap gap-1.5">
+          {/* Controls */}
+          <div className="flex gap-2">
             <button
               data-testid="back-btn-3d"
               onClick={onBack}
-              className="flex items-center justify-center gap-1 py-1.5 px-3 rounded bg-white/10 hover:bg-white/20 transition-all text-xs text-white"
-              style={{ fontFamily: 'Orbitron, sans-serif' }}
+              className="flex items-center gap-1 px-3 py-2 rounded-lg transition-all"
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                fontFamily: 'Orbitron, sans-serif',
+                fontSize: '11px'
+              }}
             >
-              <ArrowLeft size={12} />
+              <ArrowLeft size={14} />
               BACK
             </button>
             <button
               data-testid="reset-btn-3d"
               onClick={resetGame}
-              className="flex items-center justify-center gap-1 py-1.5 px-3 rounded bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 transition-all text-xs"
-              style={{ fontFamily: 'Orbitron, sans-serif' }}
+              className="flex items-center gap-1 px-3 py-2 rounded-lg transition-all"
+              style={{
+                background: 'rgba(0,100,255,0.2)',
+                border: '1px solid rgba(0,150,255,0.3)',
+                color: '#4dabf7',
+                fontFamily: 'Orbitron, sans-serif',
+                fontSize: '11px'
+              }}
             >
-              <RotateCcw size={12} />
+              <RotateCcw size={14} />
               RESET
             </button>
             <button
               data-testid="resign-btn-3d"
               onClick={handleResign}
-              className="flex items-center justify-center gap-1 py-1.5 px-3 rounded bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-all text-xs"
-              style={{ fontFamily: 'Orbitron, sans-serif' }}
+              className="flex items-center gap-1 px-3 py-2 rounded-lg transition-all"
+              style={{
+                background: 'rgba(255,0,64,0.2)',
+                border: '1px solid rgba(255,0,64,0.3)',
+                color: '#ff6b6b',
+                fontFamily: 'Orbitron, sans-serif',
+                fontSize: '11px'
+              }}
             >
-              <Flag size={12} />
+              <Flag size={14} />
               RESIGN
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Right Panel - Mode Switch & Move History */}
-        <div 
-          className="pointer-events-auto rounded-lg p-3"
-          style={{
-            background: 'linear-gradient(180deg, rgba(20,10,40,0.95) 0%, rgba(10,5,25,0.98) 100%)',
-            border: '1px solid rgba(136,68,255,0.3)',
-            backdropFilter: 'blur(10px)',
-            minWidth: '180px'
-          }}
-        >
-          {/* 2D/3D Toggle */}
-          <div className="mb-3">
-            <button
-              data-testid="switch-to-2d-btn"
-              onClick={onSwitch2D}
-              className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-gradient-to-r from-purple-600/30 to-blue-600/30 hover:from-purple-600/50 hover:to-blue-600/50 transition-all text-white"
-              style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '11px' }}
-            >
-              <Square size={14} />
-              SWITCH TO 2D
-            </button>
+      {/* Bottom Panel - Move History & Captured */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+        <div className="max-w-4xl mx-auto flex gap-4">
+          {/* Captured Pieces */}
+          <div
+            className="flex-1 px-4 py-3 rounded-lg"
+            style={{
+              background: 'linear-gradient(180deg, rgba(40,20,60,0.9) 0%, rgba(20,10,35,0.95) 100%)',
+              border: '1px solid rgba(191, 0, 255, 0.2)'
+            }}
+          >
+            <h4 className="text-xs mb-2" style={{ fontFamily: 'Rajdhani, sans-serif', color: ALPHA_GOLD }}>
+              CAPTURED
+            </h4>
+            <div className="flex gap-4">
+              <div className="flex gap-1 min-h-[24px]">
+                {capturedPieces[playerColor === 'white' ? 'black' : 'white'].map((piece, i) => (
+                  <span key={i} className="text-lg">
+                    {getPieceSymbol(piece, playerColor === 'white' ? 'black' : 'white')}
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-1 min-h-[24px] opacity-60">
+                {capturedPieces[playerColor].map((piece, i) => (
+                  <span key={i} className="text-lg">
+                    {getPieceSymbol(piece, playerColor)}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Move History */}
-          <h3 className="text-xs font-bold tracking-wider mb-2 text-gray-400" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            MOVES
-          </h3>
-          <div className="h-32 overflow-y-auto pr-1 custom-scrollbar" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-            {moveHistory.length === 0 ? (
-              <p className="text-gray-600 text-xs">No moves yet</p>
-            ) : (
-              <div className="space-y-0.5 text-xs">
-                {Array.from({ length: Math.ceil(moveHistory.length / 2) }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-1 py-0.5 px-1.5 rounded hover:bg-white/5 text-white">
-                    <span className="text-gray-600 w-4">{i + 1}.</span>
-                    <span className="flex-1">{moveHistory[i * 2]}</span>
-                    <span className="text-gray-400 flex-1">{moveHistory[i * 2 + 1] || ''}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div
+            className="flex-1 px-4 py-3 rounded-lg max-h-24 overflow-y-auto"
+            style={{
+              background: 'linear-gradient(180deg, rgba(40,20,60,0.9) 0%, rgba(20,10,35,0.95) 100%)',
+              border: '1px solid rgba(191, 0, 255, 0.2)'
+            }}
+          >
+            <h4 className="text-xs mb-2" style={{ fontFamily: 'Rajdhani, sans-serif', color: ALPHA_GOLD }}>
+              MOVES
+            </h4>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+              {moveHistory.length === 0 ? (
+                <span className="text-gray-600">No moves yet</span>
+              ) : (
+                Array.from({ length: Math.ceil(moveHistory.length / 2) }).map((_, i) => (
+                  <span key={i} className="text-gray-300">
+                    <span className="text-gray-500">{i + 1}.</span>{' '}
+                    <span className="text-white">{moveHistory[i * 2]}</span>{' '}
+                    <span className="text-gray-400">{moveHistory[i * 2 + 1] || ''}</span>
+                  </span>
+                ))
+              )}
+            </div>
           </div>
 
-          {/* Player Color */}
-          <div className="mt-2 pt-2 border-t border-white/10">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500" style={{ fontFamily: 'Rajdhani, sans-serif' }}>PLAYING AS</span>
-              <span className="text-xl text-white" style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' }}>
-                {playerColor === 'white' ? '♔' : '♚'}
-              </span>
-            </div>
+          {/* Playing As */}
+          <div
+            className="px-4 py-3 rounded-lg flex items-center gap-2"
+            style={{
+              background: 'linear-gradient(180deg, rgba(40,20,60,0.9) 0%, rgba(20,10,35,0.95) 100%)',
+              border: '1px solid rgba(191, 0, 255, 0.2)'
+            }}
+          >
+            <span className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', color: '#666' }}>
+              PLAYING AS
+            </span>
+            <span className="text-3xl" style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.4))' }}>
+              {playerColor === 'white' ? '♔' : '♚'}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Check indicator */}
-      {isInCheck && (
-        <div 
-          className="absolute top-1/4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full"
-          style={{
-            background: 'linear-gradient(135deg, #ff0040 0%, #ff4000 100%)',
-            fontFamily: 'Orbitron, sans-serif',
-            animation: 'pulse 1s infinite',
-            fontSize: '14px',
-            color: 'white',
-            boxShadow: '0 0 30px rgba(255,0,64,0.6)'
-          }}
-        >
-          CHECK!
-        </div>
-      )}
-
-      {/* 3D Mode indicator */}
-      <div 
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full"
-        style={{
-          background: 'linear-gradient(135deg, rgba(136,68,255,0.3) 0%, rgba(68,136,255,0.3) 100%)',
-          border: '1px solid rgba(136,68,255,0.5)',
-          fontFamily: 'Orbitron, sans-serif',
-          fontSize: '10px',
-          color: '#aa88ff',
-          backdropFilter: 'blur(10px)'
-        }}
-      >
-        <Cube size={12} className="inline mr-2" />
-        3D FANTASY MODE • DRAG TO ROTATE
+      {/* Rune decorations in corners */}
+      <div className="absolute top-4 left-4 text-4xl opacity-30" style={{ color: ALPHA_PURPLE, textShadow: `0 0 20px ${ALPHA_PURPLE}` }}>
+        ᛟ
+      </div>
+      <div className="absolute top-4 right-4 text-4xl opacity-30" style={{ color: ALPHA_GOLD, textShadow: `0 0 20px ${ALPHA_GOLD}` }}>
+        ᛞ
+      </div>
+      <div className="absolute bottom-20 left-4 text-4xl opacity-30" style={{ color: ALPHA_PINK, textShadow: `0 0 20px ${ALPHA_PINK}` }}>
+        ᛜ
+      </div>
+      <div className="absolute bottom-20 right-4 text-4xl opacity-30" style={{ color: ALPHA_PURPLE, textShadow: `0 0 20px ${ALPHA_PURPLE}` }}>
+        ᛚ
       </div>
     </div>
   );
