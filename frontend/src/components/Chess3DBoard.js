@@ -2,9 +2,9 @@ import React, { useRef, useMemo, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 
-// Import the sophisticated AlphaZero 3D components
-import AlphaZeroBoard3DScene from './Chess3D/AlphaZeroBoard3D';
-import AlphaZeroEnvironment3D from './Chess3D/AlphaZeroEnvironment3D';
+// Import OPTIMIZED AlphaZero 3D components (performance-tuned)
+import AlphaZeroBoard3DScene from './Chess3D/AlphaZeroBoard3DOptimized';
+import AlphaZeroEnvironment3D from './Chess3D/AlphaZeroEnvironment3DOptimized';
 
 // Parse FEN to get piece positions for the AlphaZero board format
 function parseFENtoObject(fen) {
@@ -122,13 +122,16 @@ const Chess3DBoard = ({ position, lastMove, playerColor, boardSize, onSquareClic
       data-testid="chess-3d-board"
     >
       <Canvas 
-        shadows
-        dpr={[1, 2]}
+        shadows={false}
+        dpr={[1, 1.5]}
         gl={{ 
           antialias: true,
           alpha: true,
-          powerPreference: 'high-performance'
+          powerPreference: 'high-performance',
+          stencil: false,
+          depth: true
         }}
+        performance={{ min: 0.5 }}
       >
         <Suspense fallback={<LoadingFallback />}>
           <Chess3DScene
