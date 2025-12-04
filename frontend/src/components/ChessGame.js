@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Cube } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Box, Grid3X3 } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
+
+// Lazy load 3D components for AlphaZero only
+const Chess3DBoard = lazy(() => import('./Chess3DBoard'));
+const AlphaZeroBackground = lazy(() => import('./AlphaZeroBackground'));
 
 // ═══════════════════════════════════════════════════════════════════════
 // PERSONALITY IMPORTS - External personality files
@@ -143,7 +147,7 @@ function getBookMoveForPosition(fen, color, enemyId) {
 // Starting position FEN constant
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-const ChessGame = ({ enemy, playerColor, onGameEnd, onBack, onSwitch3D }) => {
+const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   // Create Chess instance lazily to avoid recreating on each render
   const gameRef = useRef(null);
   if (gameRef.current === null) {
@@ -163,6 +167,7 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack, onSwitch3D }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [currentTurn, setCurrentTurn] = useState('w');
   const [isInCheck, setIsInCheck] = useState(false);
+  const [is3DMode, setIs3DMode] = useState(false);
   const stockfishRef = useRef(null);
   const isEngineReady = useRef(false);
   const boardContainerRef = useRef(null);
@@ -622,11 +627,28 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack, onSwitch3D }) => {
 
   const isPlayerTurn = (playerColor === 'white' && currentTurn === 'w') || 
                        (playerColor === 'black' && currentTurn === 'b');
+  
+  // Check if playing against AlphaZero (hidden master)
+  const isAlphaZeroGame = enemy?.id === 'alphazero';
+  
+  // Toggle 3D mode handler
+  const toggle3DMode = useCallback(() => {
+    setIs3DMode(prev => !prev);
+  }, []);
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden" data-testid="chess-game-container" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%)' }}>
-      {/* Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900" style={{ zIndex: 0, minHeight: '100vh', minWidth: '100vw' }} />
+    <div className="min-h-screen w-full flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden" data-testid="chess-game-container" style={{ background: is3DMode ? 'transparent' : 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%)' }}>
+      {/* AlphaZero 3D Background - Only when 3D mode is active */}
+      {isAlphaZeroGame && is3DMode && (
+        <Suspense fallback={null}>
+          <AlphaZeroBackground enabled={true} />
+        </Suspense>
+      )}
+      
+      {/* Standard Background - Hidden in 3D mode */}
+      {!is3DMode && (
+        <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900" style={{ zIndex: 0, minHeight: '100vh', minWidth: '100vw' }} />
+      )}
 
       {/* Main Layout */}
       <div className={`relative z-10 flex ${isMobile ? 'flex-col' : 'flex-row'} items-start justify-center gap-3 sm:gap-6 w-full max-w-6xl`}>
@@ -747,19 +769,6 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack, onSwitch3D }) => {
                 RESIGN
               </button>
             </div>
-            
-            {/* 3D Mode Switch Button */}
-            {onSwitch3D && (
-              <button
-                data-testid="switch-to-3d-btn"
-                onClick={onSwitch3D}
-                className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-gradient-to-r from-purple-600/40 to-blue-600/40 hover:from-purple-600/60 hover:to-blue-600/60 transition-all text-xs border border-purple-500/30"
-                style={{ fontFamily: 'Orbitron, sans-serif' }}
-              >
-                <Cube size={14} className="text-purple-400" />
-                <span className="text-purple-300">ENTER 3D WORLD</span>
-              </button>
-            )}
           </div>
         </div>
 
