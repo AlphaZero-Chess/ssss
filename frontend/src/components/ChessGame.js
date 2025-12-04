@@ -1,8 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Box } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Box, Square } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
+
+// ═══════════════════════════════════════════════════════════════════════
+// 3D MODE - Lazy loaded for performance (can be removed without breaking 2D)
+// ═══════════════════════════════════════════════════════════════════════
+const Chess3DView = lazy(() => import('./Chess3D/Chess3DView'));
 
 // ═══════════════════════════════════════════════════════════════════════
 // PERSONALITY IMPORTS - External personality files
@@ -143,7 +148,7 @@ function getBookMoveForPosition(fen, color, enemyId) {
 // Starting position FEN constant
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-const ChessGame = ({ enemy, playerColor, onGameEnd, onBack, onSwitchTo3D }) => {
+const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   // Create Chess instance lazily to avoid recreating on each render
   const gameRef = useRef(null);
   if (gameRef.current === null) {
@@ -163,6 +168,8 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack, onSwitchTo3D }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [currentTurn, setCurrentTurn] = useState('w');
   const [isInCheck, setIsInCheck] = useState(false);
+  const [viewMode, setViewMode] = useState('2d'); // '2d' | '3d'
+  const [selectedSquare3D, setSelectedSquare3D] = useState(null); // For 3D click-to-move
   const stockfishRef = useRef(null);
   const isEngineReady = useRef(false);
   const boardContainerRef = useRef(null);
@@ -600,6 +607,84 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack, onSwitchTo3D }) => {
   const setSmallSize = () => setBoardSize(isMobile ? 220 : 280);
   const setLargeSize = () => setBoardSize(isMobile ? 340 : 480);
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 3D MODE CLICK HANDLER - Click-to-move for 3D view
+  // ═══════════════════════════════════════════════════════════════════════
+  const handle3DSquareClick = useCallback((square) => {
+    if (isThinking || gameStatus !== 'playing') return;
+    
+    const game = gameRef.current;
+    const turn = game.turn();
+    const isPlayerTurnNow = (playerColor === 'white' && turn === 'w') || 
+                           (playerColor === 'black' && turn === 'b');
+    
+    if (!isPlayerTurnNow) return;
+    
+    const pieceAtSquare = game.get(square);
+    const playerPieceColor = playerColor === 'white' ? 'w' : 'b';
+    
+    // If clicking on own piece, select it
+    if (pieceAtSquare && pieceAtSquare.color === playerPieceColor) {
+      setSelectedSquare3D(square);
+      return;
+    }
+    
+    // If a piece is already selected, try to move
+    if (selectedSquare3D) {
+      try {
+        const moveResult = game.move({
+          from: selectedSquare3D,
+          to: square,
+          promotion: 'q'
+        });
+        
+        if (moveResult) {
+          moveCountRef.current++;
+          const newFen = game.fen();
+          
+          setPosition(newFen);
+          setCurrentTurn(game.turn());
+          setIsInCheck(game.isCheck() && !game.isCheckmate());
+          setMoveHistory(prev => [...prev, moveResult.san]);
+          setLastMove({ from: selectedSquare3D, to: square });
+          setSelectedSquare3D(null);
+          
+          if (moveResult.captured) {
+            const capturedColor = moveResult.color === 'w' ? 'black' : 'white';
+            setCapturedPieces(prev => ({
+              ...prev,
+              [capturedColor]: [...prev[capturedColor], moveResult.captured]
+            }));
+          }
+          
+          if (game.isGameOver()) {
+            handleGameOver(game);
+            return;
+          }
+          
+          // Trigger engine move
+          setTimeout(() => {
+            if (stockfishRef.current?.makeEngineMove) {
+              stockfishRef.current.makeEngineMove();
+            }
+          }, 300);
+        } else {
+          setSelectedSquare3D(null);
+        }
+      } catch (e) {
+        setSelectedSquare3D(null);
+      }
+    }
+  }, [isThinking, gameStatus, playerColor, selectedSquare3D, handleGameOver]);
+
+  // Get valid moves for selected square in 3D mode
+  const getValidMoves3D = useCallback(() => {
+    if (!selectedSquare3D) return [];
+    const game = gameRef.current;
+    const moves = game.moves({ square: selectedSquare3D, verbose: true });
+    return moves.map(m => m.to);
+  }, [selectedSquare3D]);
+
   // Get piece symbols for captured display
   const getPieceSymbol = (piece, color) => {
     const symbols = {
@@ -746,103 +831,160 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack, onSwitchTo3D }) => {
                 <Flag size={12} />
                 RESIGN
               </button>
-              {onSwitchTo3D && (
-                <button
-                  data-testid="switch-3d-btn"
-                  onClick={onSwitchTo3D}
-                  className="flex items-center justify-center gap-1 py-1.5 px-3 rounded transition-all text-xs"
-                  style={{ 
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: 'linear-gradient(135deg, #bf00ff40 0%, #ff00bf40 100%)',
-                    border: '1px solid #bf00ff50'
-                  }}
-                >
-                  <Box size={12} className="text-purple-400" />
-                  <span className="text-purple-300">3D</span>
-                </button>
-              )}
+            </div>
+
+            {/* 3D/2D View Mode Toggle */}
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-gray-500" style={{ fontFamily: 'Rajdhani, sans-serif' }}>VIEW MODE</span>
+                <div className="flex gap-1">
+                  <button
+                    data-testid="view-2d-btn"
+                    onClick={() => { setViewMode('2d'); setSelectedSquare3D(null); }}
+                    className={`flex items-center justify-center gap-1 py-1 px-2 rounded text-xs transition-all ${
+                      viewMode === '2d' 
+                        ? 'bg-purple-500/40 text-purple-300 border border-purple-500/50' 
+                        : 'bg-white/10 hover:bg-white/20 text-gray-400'
+                    }`}
+                    style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '10px' }}
+                  >
+                    <Square size={10} />
+                    2D
+                  </button>
+                  <button
+                    data-testid="view-3d-btn"
+                    onClick={() => { setViewMode('3d'); setSelectedSquare3D(null); }}
+                    className={`flex items-center justify-center gap-1 py-1 px-2 rounded text-xs transition-all ${
+                      viewMode === '3d' 
+                        ? 'bg-purple-500/40 text-purple-300 border border-purple-500/50' 
+                        : 'bg-white/10 hover:bg-white/20 text-gray-400'
+                    }`}
+                    style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '10px' }}
+                  >
+                    <Box size={10} />
+                    3D
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Chess Board with Resize Handle */}
+        {/* Chess Board Area - 2D or 3D */}
         <div className={`relative ${isMobile ? 'order-1' : ''}`} ref={boardContainerRef}>
-          {/* Board Container */}
-          <div 
-            className="chess-board-wrapper p-1.5 rounded-lg relative"
-            style={{
-              background: 'linear-gradient(180deg, rgba(25,25,40,0.85) 0%, rgba(15,15,25,0.9) 100%)',
-              boxShadow: `0 0 30px ${enemy?.color}20, 0 0 60px ${enemy?.color}08`,
-              border: `1px solid ${enemy?.color}25`,
-              backdropFilter: 'blur(8px)',
-              width: boardSize + 12,
-              height: boardSize + 12,
-            }}
-            data-testid="chess-board-container"
-          >
-            <Chessboard
-              options={{
-                id: "chess-board",
-                position: position,
-                onPieceDrop: onDrop,
-                canDragPiece: canDragPiece,
-                boardWidth: boardSize,
-                boardOrientation: playerColor,
-                boardStyle: {
-                  borderRadius: '6px',
-                  boxShadow: 'inset 0 0 15px rgba(0,0,0,0.4)'
-                },
-                squareStyles: customSquareStyles,
-                darkSquareStyle: { backgroundColor: '#4a5568' },
-                lightSquareStyle: { backgroundColor: '#a0aec0' },
-                animationDurationInMs: 180
-              }}
-            />
-            
-            {/* Resize Handle - Bottom Right Corner */}
+          {viewMode === '2d' ? (
+            <>
+              {/* 2D Board Container */}
+              <div 
+                className="chess-board-wrapper p-1.5 rounded-lg relative"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(25,25,40,0.85) 0%, rgba(15,15,25,0.9) 100%)',
+                  boxShadow: `0 0 30px ${enemy?.color}20, 0 0 60px ${enemy?.color}08`,
+                  border: `1px solid ${enemy?.color}25`,
+                  backdropFilter: 'blur(8px)',
+                  width: boardSize + 12,
+                  height: boardSize + 12,
+                }}
+                data-testid="chess-board-container"
+              >
+                <Chessboard
+                  options={{
+                    id: "chess-board",
+                    position: position,
+                    onPieceDrop: onDrop,
+                    canDragPiece: canDragPiece,
+                    boardWidth: boardSize,
+                    boardOrientation: playerColor,
+                    boardStyle: {
+                      borderRadius: '6px',
+                      boxShadow: 'inset 0 0 15px rgba(0,0,0,0.4)'
+                    },
+                    squareStyles: customSquareStyles,
+                    darkSquareStyle: { backgroundColor: '#4a5568' },
+                    lightSquareStyle: { backgroundColor: '#a0aec0' },
+                    animationDurationInMs: 180
+                  }}
+                />
+                
+                {/* Resize Handle - Bottom Right Corner */}
+                <div
+                  className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity"
+                  style={{ 
+                    background: `linear-gradient(135deg, transparent 50%, ${enemy?.color || '#ff0080'}60 50%)`,
+                    borderBottomRightRadius: '6px'
+                  }}
+                  onMouseDown={handleResizeStart}
+                  onTouchStart={handleResizeStart}
+                  data-testid="resize-handle"
+                >
+                  <Move size={10} className="text-white/50 rotate-45" style={{ marginTop: '4px', marginLeft: '4px' }} />
+                </div>
+              </div>
+              
+              {/* Size Controls - 2D only */}
+              <div className="flex justify-center gap-2 mt-2">
+                <button
+                  onClick={setSmallSize}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
+                  style={{ fontFamily: 'Rajdhani, sans-serif' }}
+                  data-testid="size-small-btn"
+                >
+                  <Minimize2 size={12} />
+                  Small
+                </button>
+                <span className="text-xs text-gray-500 flex items-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                  {boardSize}px
+                </span>
+                <button
+                  onClick={setLargeSize}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
+                  style={{ fontFamily: 'Rajdhani, sans-serif' }}
+                  data-testid="size-large-btn"
+                >
+                  <Maximize2 size={12} />
+                  Large
+                </button>
+              </div>
+            </>
+          ) : (
+            /* 3D Board Container */
             <div
-              className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity"
-              style={{ 
-                background: `linear-gradient(135deg, transparent 50%, ${enemy?.color || '#ff0080'}60 50%)`,
-                borderBottomRightRadius: '6px'
+              className="chess-3d-wrapper rounded-lg relative overflow-hidden"
+              style={{
+                width: isMobile ? Math.min(350, window.innerWidth - 40) : 480,
+                height: isMobile ? Math.min(350, window.innerWidth - 40) : 480,
+                boxShadow: `0 0 40px ${enemy?.color}30, 0 0 80px rgba(107, 63, 160, 0.2)`,
+                border: `2px solid ${enemy?.color}40`,
               }}
-              onMouseDown={handleResizeStart}
-              onTouchStart={handleResizeStart}
-              data-testid="resize-handle"
+              data-testid="chess-3d-container"
             >
-              <Move size={10} className="text-white/50 rotate-45" style={{ marginTop: '4px', marginLeft: '4px' }} />
+              <Suspense fallback={
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-purple-900/30">
+                  <div className="text-center">
+                    <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+                    <p className="text-purple-400 text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      LOADING 3D...
+                    </p>
+                  </div>
+                </div>
+              }>
+                <Chess3DView
+                  game={gameRef.current}
+                  playerColor={playerColor}
+                  selectedSquare={selectedSquare3D}
+                  lastMove={lastMove}
+                  onSquareClick={handle3DSquareClick}
+                  enemyColor={enemy?.color}
+                  isThinking={isThinking}
+                />
+              </Suspense>
             </div>
-          </div>
+          )}
           
-          {/* Size Controls */}
-          <div className="flex justify-center gap-2 mt-2">
-            <button
-              onClick={setSmallSize}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
-              style={{ fontFamily: 'Rajdhani, sans-serif' }}
-              data-testid="size-small-btn"
-            >
-              <Minimize2 size={12} />
-              Small
-            </button>
-            <span className="text-xs text-gray-500 flex items-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-              {boardSize}px
-            </span>
-            <button
-              onClick={setLargeSize}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
-              style={{ fontFamily: 'Rajdhani, sans-serif' }}
-              data-testid="size-large-btn"
-            >
-              <Maximize2 size={12} />
-              Large
-            </button>
-          </div>
-          
-          {/* Check indicator */}
+          {/* Check indicator - shown for both modes */}
           {isInCheck && (
             <div 
-              className="absolute -top-8 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs"
+              className="absolute -top-8 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs z-20"
               style={{
                 background: 'linear-gradient(135deg, #ff0040 0%, #ff4000 100%)',
                 fontFamily: 'Orbitron, sans-serif',

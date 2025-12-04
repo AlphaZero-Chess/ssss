@@ -151,7 +151,7 @@ const SneakyEyeTracker = ({
   // Image dimensions based on size
   const imageDimensions = size === 'large' 
     ? { width: 80, height: 80 } 
-    : { width: 35, height: 35 };
+    : { width: 30, height: 30 };
 
   return (
     <span
