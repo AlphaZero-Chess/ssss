@@ -2,11 +2,11 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-// Rune symbols for environment decorations
+// Elder Futhark Runes for environment
 const RUNES = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛇ', 'ᛈ', 'ᛉ', 'ᛋ', 'ᛏ', 'ᛒ', 'ᛖ', 'ᛗ', 'ᛚ', 'ᛜ', 'ᛞ', 'ᛟ'];
 
-// ==================== Deep Space Cosmic Particles ====================
-export const CosmicParticleField = ({ count = 3000 }) => {
+// ==================== OVERWHELMING COSMIC PARTICLE FIELD ====================
+export const CosmicParticleField = ({ count = 4500 }) => {
   const particlesRef = useRef();
   
   const particles = useMemo(() => {
@@ -15,8 +15,8 @@ export const CosmicParticleField = ({ count = 3000 }) => {
     const sizes = new Float32Array(count);
     
     for (let i = 0; i < count; i++) {
-      // Spread in massive sphere
-      const radius = 60 + Math.random() * 200;
+      // Spread in massive sphere with depth variation
+      const radius = 50 + Math.random() * 220;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       
@@ -24,31 +24,31 @@ export const CosmicParticleField = ({ count = 3000 }) => {
       positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
       positions[i * 3 + 2] = radius * Math.cos(phi);
       
-      // AlphaZero color palette: purple, pink, gold, white
+      // AlphaZero color palette: deep purple, hot pink, gold, ethereal white
       const colorChoice = Math.random();
-      if (colorChoice < 0.35) {
+      if (colorChoice < 0.32) {
         // Deep purple
-        colors[i * 3] = 0.6 + Math.random() * 0.2;
+        colors[i * 3] = 0.55 + Math.random() * 0.25;
         colors[i * 3 + 1] = 0;
-        colors[i * 3 + 2] = 0.9 + Math.random() * 0.1;
-      } else if (colorChoice < 0.6) {
-        // Hot pink
-        colors[i * 3] = 0.9 + Math.random() * 0.1;
+        colors[i * 3 + 2] = 0.85 + Math.random() * 0.15;
+      } else if (colorChoice < 0.55) {
+        // Hot pink/magenta
+        colors[i * 3] = 0.85 + Math.random() * 0.15;
         colors[i * 3 + 1] = 0;
-        colors[i * 3 + 2] = 0.6 + Math.random() * 0.3;
-      } else if (colorChoice < 0.8) {
-        // Gold
+        colors[i * 3 + 2] = 0.55 + Math.random() * 0.35;
+      } else if (colorChoice < 0.78) {
+        // Gold/amber
         colors[i * 3] = 1;
-        colors[i * 3 + 1] = 0.75 + Math.random() * 0.25;
+        colors[i * 3 + 1] = 0.7 + Math.random() * 0.3;
         colors[i * 3 + 2] = 0;
       } else {
-        // Ethereal white
-        colors[i * 3] = 0.9 + Math.random() * 0.1;
-        colors[i * 3 + 1] = 0.9 + Math.random() * 0.1;
+        // Ethereal white/cyan
+        colors[i * 3] = 0.85 + Math.random() * 0.15;
+        colors[i * 3 + 1] = 0.85 + Math.random() * 0.15;
         colors[i * 3 + 2] = 1;
       }
       
-      sizes[i] = 0.2 + Math.random() * 0.8;
+      sizes[i] = 0.15 + Math.random() * 0.9;
     }
     
     return { positions, colors, sizes };
@@ -56,8 +56,9 @@ export const CosmicParticleField = ({ count = 3000 }) => {
   
   useFrame((state) => {
     if (particlesRef.current) {
-      particlesRef.current.rotation.y += 0.00015;
-      particlesRef.current.rotation.x += 0.00008;
+      particlesRef.current.rotation.y += 0.00012;
+      particlesRef.current.rotation.x += 0.00006;
+      particlesRef.current.rotation.z += 0.00003;
     }
   });
   
@@ -78,10 +79,10 @@ export const CosmicParticleField = ({ count = 3000 }) => {
         />
       </bufferGeometry>
       <pointsMaterial
-        size={0.6}
+        size={0.65}
         vertexColors
         transparent
-        opacity={0.85}
+        opacity={0.9}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
       />
@@ -89,7 +90,7 @@ export const CosmicParticleField = ({ count = 3000 }) => {
   );
 };
 
-// ==================== Neural Network Visualization ====================
+// ==================== SOPHISTICATED NEURAL NETWORK ====================
 export const NeuralNetworkViz = () => {
   const nodesRef = useRef();
   const connectionsRef = useRef();
@@ -98,21 +99,22 @@ export const NeuralNetworkViz = () => {
     const nodes = [];
     const connections = [];
     
-    // Create neural network layers (like AlphaZero's architecture)
-    const layers = [6, 10, 14, 18, 14, 10, 6];
+    // Create neural network layers (like AlphaZero's deep architecture)
+    const layers = [8, 12, 18, 24, 18, 12, 8];
     let nodeIndex = 0;
     
     layers.forEach((nodeCount, layerIdx) => {
-      const layerX = (layerIdx - 3) * 10;
+      const layerX = (layerIdx - 3) * 12;
       for (let i = 0; i < nodeCount; i++) {
-        const y = (i - nodeCount / 2) * 3;
-        const z = -30 + (Math.random() - 0.5) * 8;
+        const y = (i - nodeCount / 2) * 3.5;
+        const z = -35 + (Math.random() - 0.5) * 10;
         nodes.push({
           id: nodeIndex++,
           position: [layerX, y, z],
           layer: layerIdx,
           activation: Math.random(),
-          phase: Math.random() * Math.PI * 2
+          phase: Math.random() * Math.PI * 2,
+          size: 0.3 + Math.random() * 0.25
         });
       }
     });
@@ -124,7 +126,7 @@ export const NeuralNetworkViz = () => {
       const nextStart = offset + layers[l];
       
       for (let i = 0; i < layers[l]; i++) {
-        const connectCount = Math.min(2 + Math.floor(Math.random() * 2), layers[l + 1]);
+        const connectCount = Math.min(3 + Math.floor(Math.random() * 2), layers[l + 1]);
         for (let j = 0; j < connectCount; j++) {
           const targetIdx = Math.floor(Math.random() * layers[l + 1]);
           connections.push({
@@ -145,17 +147,17 @@ export const NeuralNetworkViz = () => {
     if (nodesRef.current) {
       nodesRef.current.children.forEach((node, i) => {
         const data = networkData.nodes[i];
-        const pulse = Math.sin(state.clock.elapsedTime * 2.5 + data.phase) * 0.5 + 0.5;
-        node.material.emissiveIntensity = 0.4 + pulse * 0.6;
-        node.scale.setScalar(0.7 + pulse * 0.4);
+        const pulse = Math.sin(state.clock.elapsedTime * 2.8 + data.phase) * 0.5 + 0.5;
+        node.material.emissiveIntensity = 0.5 + pulse * 0.7;
+        node.scale.setScalar((data.size || 0.35) * (0.8 + pulse * 0.5));
       });
     }
     
     if (connectionsRef.current) {
       connectionsRef.current.children.forEach((conn, i) => {
         const data = networkData.connections[i];
-        const pulse = Math.sin(state.clock.elapsedTime * 3.5 + data.phase) * 0.5 + 0.5;
-        conn.material.opacity = 0.08 + pulse * 0.25;
+        const pulse = Math.sin(state.clock.elapsedTime * 4 + data.phase) * 0.5 + 0.5;
+        conn.material.opacity = 0.1 + pulse * 0.3;
       });
     }
   });
@@ -166,13 +168,13 @@ export const NeuralNetworkViz = () => {
       <group ref={nodesRef}>
         {networkData.nodes.map((node) => (
           <mesh key={node.id} position={node.position}>
-            <sphereGeometry args={[0.35, 16, 16]} />
+            <sphereGeometry args={[node.size || 0.35, 20, 20]} />
             <meshStandardMaterial
-              color="#bf00ff"
-              emissive="#bf00ff"
-              emissiveIntensity={0.5}
+              color={node.layer % 2 === 0 ? "#bf00ff" : "#ff00bf"}
+              emissive={node.layer % 2 === 0 ? "#bf00ff" : "#ff00bf"}
+              emissiveIntensity={0.6}
               transparent
-              opacity={0.85}
+              opacity={0.88}
             />
           </mesh>
         ))}
@@ -194,9 +196,9 @@ export const NeuralNetworkViz = () => {
           return (
             <line key={i} geometry={geometry}>
               <lineBasicMaterial
-                color="#ff00bf"
+                color={i % 3 === 0 ? "#ff00bf" : i % 3 === 1 ? "#bf00ff" : "#ffcc00"}
                 transparent
-                opacity={0.15}
+                opacity={0.18}
               />
             </line>
           );
@@ -311,31 +313,32 @@ export const EnergyOrbs = ({ count = 20 }) => {
   );
 };
 
-// ==================== Lightning Bolts ====================
+// ==================== ELECTRIFYING LIGHTNING BOLTS ====================
 export const LightningBolts = () => {
   const boltsRef = useRef();
   
   const bolts = useMemo(() => {
-    return Array.from({ length: 8 }, (_, i) => {
-      const startX = (Math.random() - 0.5) * 50;
-      const startZ = (Math.random() - 0.5) * 50 - 30;
-      const startY = 30 + Math.random() * 20;
+    return Array.from({ length: 12 }, (_, i) => {
+      const startX = (Math.random() - 0.5) * 60;
+      const startZ = (Math.random() - 0.5) * 60 - 35;
+      const startY = 35 + Math.random() * 25;
       const points = [];
       let x = startX;
       let y = startY;
       let z = startZ;
       
-      for (let j = 0; j < 12; j++) {
+      for (let j = 0; j < 16; j++) {
         points.push(new THREE.Vector3(x, y, z));
-        x += (Math.random() - 0.5) * 5;
-        y -= 5;
-        z += (Math.random() - 0.5) * 3;
+        x += (Math.random() - 0.5) * 6;
+        y -= 4;
+        z += (Math.random() - 0.5) * 4;
       }
       
       return {
         points,
         phase: Math.random() * Math.PI * 2,
-        duration: 0.1 + Math.random() * 0.1
+        duration: 0.08 + Math.random() * 0.12,
+        color: i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? '#bf00ff' : '#00ffff'
       };
     });
   }, []);
@@ -344,10 +347,10 @@ export const LightningBolts = () => {
     if (boltsRef.current) {
       boltsRef.current.children.forEach((bolt, i) => {
         const data = bolts[i];
-        const flashCycle = (state.clock.elapsedTime * 2 + data.phase) % 4;
+        const flashCycle = (state.clock.elapsedTime * 2.5 + data.phase) % 5;
         bolt.visible = flashCycle < data.duration;
         if (bolt.material) {
-          bolt.material.opacity = flashCycle < data.duration ? 0.9 : 0;
+          bolt.material.opacity = flashCycle < data.duration ? 0.95 : 0;
         }
       });
     }
@@ -359,13 +362,13 @@ export const LightningBolts = () => {
         const curve = new THREE.CatmullRomCurve3(bolt.points);
         return (
           <mesh key={i}>
-            <tubeGeometry args={[curve, 24, 0.12, 8, false]} />
+            <tubeGeometry args={[curve, 28, 0.15, 8, false]} />
             <meshStandardMaterial
-              color="#ffffff"
-              emissive="#bf00ff"
-              emissiveIntensity={3}
+              color={bolt.color}
+              emissive={bolt.color}
+              emissiveIntensity={4}
               transparent
-              opacity={0.9}
+              opacity={0.95}
             />
           </mesh>
         );
@@ -374,34 +377,36 @@ export const LightningBolts = () => {
   );
 };
 
-// ==================== Ethereal Rings ====================
+// ==================== ETHEREAL RINGS - COMPLEX ====================
 export const EtherealRings = () => {
   const ringsRef = useRef();
   
   useFrame((state) => {
     if (ringsRef.current) {
       ringsRef.current.children.forEach((ring, i) => {
-        ring.rotation.z = state.clock.elapsedTime * (i % 2 === 0 ? 0.15 : -0.12);
-        ring.rotation.x = Math.sin(state.clock.elapsedTime * 0.3 + i) * 0.1;
+        ring.rotation.z = state.clock.elapsedTime * (i % 2 === 0 ? 0.12 : -0.1);
+        ring.rotation.x = Math.sin(state.clock.elapsedTime * 0.25 + i) * 0.12;
       });
     }
   });
   
   const rings = [
-    { radius: 16, color: '#bf00ff', opacity: 0.4 },
-    { radius: 20, color: '#ff00bf', opacity: 0.3 },
-    { radius: 25, color: '#ffcc00', opacity: 0.25 }
+    { radius: 14, color: '#bf00ff', opacity: 0.45, thickness: 0.1 },
+    { radius: 18, color: '#ff00bf', opacity: 0.35, thickness: 0.08 },
+    { radius: 22, color: '#ffcc00', opacity: 0.28, thickness: 0.06 },
+    { radius: 26, color: '#bf00ff', opacity: 0.2, thickness: 0.05 },
+    { radius: 30, color: '#ff00bf', opacity: 0.15, thickness: 0.04 }
   ];
   
   return (
     <group ref={ringsRef} rotation={[Math.PI / 2, 0, 0]} position={[0, -3, 0]}>
       {rings.map((ring, i) => (
         <mesh key={i}>
-          <torusGeometry args={[ring.radius, 0.12, 8, 64]} />
+          <torusGeometry args={[ring.radius, ring.thickness, 8, 80]} />
           <meshStandardMaterial
             color={ring.color}
             emissive={ring.color}
-            emissiveIntensity={0.6}
+            emissiveIntensity={0.7}
             transparent
             opacity={ring.opacity}
           />
@@ -411,59 +416,80 @@ export const EtherealRings = () => {
   );
 };
 
-// ==================== Central Energy Core ====================
+// ==================== CENTRAL ENERGY CORE - SOPHISTICATED ====================
 export const EnergyCore = () => {
   const coreRef = useRef();
   const ringsRef = useRef();
+  const innerCoreRef = useRef();
   
   useFrame((state) => {
     if (coreRef.current) {
-      const pulse = Math.sin(state.clock.elapsedTime * 2.5) * 0.25 + 1;
+      const pulse = Math.sin(state.clock.elapsedTime * 2.8) * 0.28 + 1;
       coreRef.current.scale.setScalar(pulse);
-      coreRef.current.material.emissiveIntensity = 0.6 + Math.sin(state.clock.elapsedTime * 3.5) * 0.3;
+      coreRef.current.material.emissiveIntensity = 0.7 + Math.sin(state.clock.elapsedTime * 4) * 0.35;
+    }
+    
+    if (innerCoreRef.current) {
+      innerCoreRef.current.rotation.x = state.clock.elapsedTime * 1.5;
+      innerCoreRef.current.rotation.y = state.clock.elapsedTime * 2;
     }
     
     if (ringsRef.current) {
       ringsRef.current.children.forEach((ring, i) => {
-        ring.rotation.x = state.clock.elapsedTime * (0.25 + i * 0.12);
-        ring.rotation.y = state.clock.elapsedTime * (0.35 - i * 0.1);
+        ring.rotation.x = state.clock.elapsedTime * (0.28 + i * 0.15);
+        ring.rotation.y = state.clock.elapsedTime * (0.4 - i * 0.12);
       });
     }
   });
   
   return (
-    <group position={[0, 0, -35]}>
+    <group position={[0, 0, -40]}>
       {/* Central orb */}
       <mesh ref={coreRef}>
-        <sphereGeometry args={[2.5, 32, 32]} />
+        <sphereGeometry args={[3, 40, 40]} />
         <meshStandardMaterial
           color="#bf00ff"
           emissive="#ff00bf"
-          emissiveIntensity={0.8}
+          emissiveIntensity={0.9}
           transparent
-          opacity={0.9}
+          opacity={0.92}
         />
       </mesh>
       
+      {/* Inner rotating core */}
+      <group ref={innerCoreRef}>
+        <mesh>
+          <octahedronGeometry args={[1.8, 0]} />
+          <meshStandardMaterial
+            color="#ffcc00"
+            emissive="#ffcc00"
+            emissiveIntensity={2}
+            metalness={0.95}
+            roughness={0.05}
+          />
+        </mesh>
+      </group>
+      
       {/* Orbiting rings */}
       <group ref={ringsRef}>
-        {[4, 5.5, 7].map((radius, i) => (
+        {[4.5, 6, 7.5, 9].map((radius, i) => (
           <mesh key={i}>
-            <torusGeometry args={[radius, 0.06, 8, 48]} />
+            <torusGeometry args={[radius, 0.07, 8, 56]} />
             <meshStandardMaterial
-              color={i === 0 ? '#bf00ff' : i === 1 ? '#ff00bf' : '#ffcc00'}
-              emissive={i === 0 ? '#bf00ff' : i === 1 ? '#ff00bf' : '#ffcc00'}
-              emissiveIntensity={0.9}
+              color={i === 0 ? '#bf00ff' : i === 1 ? '#ff00bf' : i === 2 ? '#ffcc00' : '#00ffff'}
+              emissive={i === 0 ? '#bf00ff' : i === 1 ? '#ff00bf' : i === 2 ? '#ffcc00' : '#00ffff'}
+              emissiveIntensity={1}
               transparent
-              opacity={0.7}
+              opacity={0.75 - i * 0.1}
             />
           </mesh>
         ))}
       </group>
       
-      {/* Light source */}
-      <pointLight color="#bf00ff" intensity={6} distance={40} />
-      <pointLight color="#ff00bf" intensity={3} distance={25} />
+      {/* Light sources */}
+      <pointLight color="#bf00ff" intensity={8} distance={50} />
+      <pointLight color="#ff00bf" intensity={4} distance={35} />
+      <pointLight color="#ffcc00" intensity={2} distance={25} />
     </group>
   );
 };

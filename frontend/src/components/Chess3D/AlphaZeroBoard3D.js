@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { AlphaZeroPiece3D } from './AlphaZeroPieces3D';
 
-// Rune symbols
+// Elder Futhark Runes
 const RUNES = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛇ', 'ᛈ', 'ᛉ', 'ᛋ', 'ᛏ', 'ᛒ', 'ᛖ', 'ᛗ', 'ᛚ', 'ᛜ', 'ᛞ', 'ᛟ'];
 
 // Convert chess notation to 3D position
@@ -18,245 +18,303 @@ const squareTo3D = (square, boardSize = 8) => {
   ];
 };
 
-// ==================== Neural Network Board Square ====================
+// ==================== NEURAL NETWORK SQUARE ====================
 const NeuralSquare = ({ position, isLight, isHighlighted, isValidMove, isLastMove, onClick }) => {
   const meshRef = useRef();
   const glowRef = useRef();
+  const runeRef = useRef();
   
   const color = useMemo(() => {
     if (isHighlighted) return '#bf00ff';
     if (isValidMove) return '#00ff88';
     if (isLastMove) return '#ffcc00';
-    if (isLight) return '#3a3050';
-    return '#1a1028';
+    if (isLight) return '#3a3058';
+    return '#18102a';
   }, [isLight, isHighlighted, isValidMove, isLastMove]);
   
   useFrame((state) => {
     if (meshRef.current && (isHighlighted || isValidMove || isLastMove)) {
-      const pulse = Math.sin(state.clock.elapsedTime * 4) * 0.3 + 0.7;
-      meshRef.current.material.emissiveIntensity = pulse * (isHighlighted ? 0.6 : 0.3);
+      const pulse = Math.sin(state.clock.elapsedTime * 4) * 0.35 + 0.65;
+      meshRef.current.material.emissiveIntensity = pulse * (isHighlighted ? 0.7 : 0.35);
     }
-    if (glowRef.current) {
-      glowRef.current.intensity = 0.3 + Math.sin(state.clock.elapsedTime * 2) * 0.1;
+    if (runeRef.current) {
+      runeRef.current.rotation.y = state.clock.elapsedTime * 0.2;
     }
   });
   
-  const emissiveColor = isHighlighted ? '#bf00ff' : isValidMove ? '#00ff88' : isLastMove ? '#ffcc00' : color;
+  const emissiveColor = isHighlighted ? '#bf00ff' : isValidMove ? '#00ff88' : isLastMove ? '#ffcc00' : '#1a0a30';
   
   return (
     <group position={position}>
-      <mesh
-        ref={meshRef}
-        receiveShadow
-        onClick={onClick}
-      >
-        <boxGeometry args={[1, 0.15, 1]} />
+      {/* Main square */}
+      <mesh ref={meshRef} receiveShadow onClick={onClick}>
+        <boxGeometry args={[1, 0.16, 1]} />
         <meshPhysicalMaterial
           color={color}
-          metalness={0.6}
-          roughness={0.3}
-          transmission={isLight ? 0.1 : 0.05}
-          thickness={0.5}
+          metalness={0.65}
+          roughness={0.25}
+          transmission={isLight ? 0.12 : 0.06}
+          thickness={0.6}
           emissive={emissiveColor}
-          emissiveIntensity={isHighlighted || isValidMove || isLastMove ? 0.4 : 0.05}
-          clearcoat={0.5}
-          clearcoatRoughness={0.3}
+          emissiveIntensity={isHighlighted || isValidMove || isLastMove ? 0.5 : 0.08}
+          clearcoat={0.6}
+          clearcoatRoughness={0.25}
         />
       </mesh>
       
-      {/* Valid move indicator orb */}
+      {/* Inner grid pattern - neural network feel */}
+      <mesh position={[0, 0.085, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.15, 0.18, 4]} />
+        <meshStandardMaterial
+          color={isLight ? '#5040a0' : '#2a1848'}
+          emissive={isLight ? '#4030a0' : '#200840'}
+          emissiveIntensity={0.3}
+          transparent
+          opacity={0.4}
+        />
+      </mesh>
+      
+      {/* Valid move indicator */}
       {isValidMove && (
-        <mesh position={[0, 0.15, 0]}>
-          <sphereGeometry args={[0.15, 16, 16]} />
-          <meshStandardMaterial
-            color="#00ff88"
-            emissive="#00ff88"
-            emissiveIntensity={1}
-            transparent
-            opacity={0.7}
-          />
-        </mesh>
+        <group ref={runeRef} position={[0, 0.2, 0]}>
+          <mesh>
+            <sphereGeometry args={[0.12, 20, 20]} />
+            <meshStandardMaterial
+              color="#00ff88"
+              emissive="#00ff88"
+              emissiveIntensity={1.2}
+              transparent
+              opacity={0.85}
+            />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[0.18, 16, 16]} />
+            <meshStandardMaterial
+              color="#00ff88"
+              emissive="#00ff88"
+              emissiveIntensity={0.4}
+              transparent
+              opacity={0.25}
+            />
+          </mesh>
+        </group>
       )}
     </group>
   );
 };
 
-// ==================== Neural Chain Border ====================
-const NeuralChainBorder = () => {
+// ==================== COMPLEX CHAIN BORDER ====================
+const ChainBorder = () => {
   const chainsRef = useRef();
   
   useFrame((state) => {
     if (chainsRef.current) {
-      chainsRef.current.children.forEach((chain, i) => {
-        if (chain.material) {
-          const pulse = Math.sin(state.clock.elapsedTime * 3 + i * 0.5) * 0.4 + 0.6;
-          chain.material.emissiveIntensity = pulse;
+      chainsRef.current.children.forEach((child, i) => {
+        if (child.material) {
+          const pulse = Math.sin(state.clock.elapsedTime * 3.5 + i * 0.3) * 0.4 + 0.6;
+          child.material.emissiveIntensity = pulse;
         }
       });
     }
   });
   
-  const createChainSegments = (start, end, count) => {
-    const segments = [];
+  const createChainLinks = (start, end, count) => {
+    const links = [];
     for (let i = 0; i < count; i++) {
       const t = i / count;
       const x = start[0] + (end[0] - start[0]) * t;
       const z = start[1] + (end[1] - start[1]) * t;
-      segments.push({ x, z, index: i });
+      links.push({
+        position: [x, 0, z],
+        rotation: start[0] === end[0] ? [0, Math.PI / 2, 0] : [0, 0, 0],
+        index: i
+      });
     }
-    return segments;
+    return links;
   };
   
   const borders = [
-    { start: [-4.8, -4.8], end: [4.8, -4.8] }, // Bottom
-    { start: [4.8, -4.8], end: [4.8, 4.8] },   // Right
-    { start: [4.8, 4.8], end: [-4.8, 4.8] },   // Top
-    { start: [-4.8, 4.8], end: [-4.8, -4.8] }  // Left
+    { start: [-5, -5], end: [5, -5] },
+    { start: [5, -5], end: [5, 5] },
+    { start: [5, 5], end: [-5, 5] },
+    { start: [-5, 5], end: [-5, -5] }
   ];
   
   return (
     <group ref={chainsRef}>
       {borders.map((border, bi) => (
-        createChainSegments(border.start, border.end, 16).map((seg, si) => (
-          <mesh
-            key={`${bi}-${si}`}
-            position={[seg.x, -0.05, seg.z]}
-          >
-            <boxGeometry args={[0.3, 0.12, 0.2]} />
-            <meshStandardMaterial
-              color="#2a1a4a"
-              emissive="#bf00ff"
-              emissiveIntensity={0.5}
-              metalness={0.9}
-              roughness={0.2}
-            />
-          </mesh>
+        createChainLinks(border.start, border.end, 20).map((link, li) => (
+          <group key={`${bi}-${li}`} position={link.position} rotation={link.rotation}>
+            {/* Chain link torus */}
+            <mesh>
+              <torusGeometry args={[0.08, 0.025, 8, 16]} />
+              <meshStandardMaterial
+                color="#2a1848"
+                emissive="#bf00ff"
+                emissiveIntensity={0.6}
+                metalness={0.95}
+                roughness={0.15}
+              />
+            </mesh>
+            {/* Inner glow */}
+            {li % 3 === 0 && (
+              <mesh>
+                <sphereGeometry args={[0.04, 12, 12]} />
+                <meshStandardMaterial
+                  color="#ff00bf"
+                  emissive="#ff00bf"
+                  emissiveIntensity={1.2}
+                />
+              </mesh>
+            )}
+          </group>
         ))
       ))}
     </group>
   );
 };
 
-// ==================== Rune Circle Seal ====================
-const RuneCircleSeal = ({ radius = 6 }) => {
+// ==================== THE SEAL - RUNIC CIRCLES ====================
+const RunicSealCircles = () => {
   const outerRef = useRef();
+  const middleRef = useRef();
   const innerRef = useRef();
+  const coreRef = useRef();
   
   useFrame((state) => {
-    if (outerRef.current) {
-      outerRef.current.rotation.z = state.clock.elapsedTime * 0.1;
-    }
-    if (innerRef.current) {
-      innerRef.current.rotation.z = -state.clock.elapsedTime * 0.15;
+    if (outerRef.current) outerRef.current.rotation.z = state.clock.elapsedTime * 0.08;
+    if (middleRef.current) middleRef.current.rotation.z = -state.clock.elapsedTime * 0.12;
+    if (innerRef.current) innerRef.current.rotation.z = state.clock.elapsedTime * 0.18;
+    if (coreRef.current) {
+      const pulse = Math.sin(state.clock.elapsedTime * 2.5) * 0.2 + 1;
+      coreRef.current.scale.setScalar(pulse);
     }
   });
   
   return (
-    <group position={[0, -0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      {/* Outer rune ring */}
+    <group position={[0, -0.35, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      {/* Outer ring with 16 rune markers */}
       <group ref={outerRef}>
         <mesh>
-          <torusGeometry args={[radius, 0.06, 8, 64]} />
+          <torusGeometry args={[6.5, 0.06, 8, 80]} />
           <meshStandardMaterial
             color="#bf00ff"
             emissive="#bf00ff"
-            emissiveIntensity={0.6}
+            emissiveIntensity={0.7}
             transparent
-            opacity={0.7}
-            metalness={0.9}
-            roughness={0.2}
+            opacity={0.8}
           />
         </mesh>
-        
-        {/* Outer ring rune markers */}
-        {RUNES.slice(0, 12).map((rune, i) => {
-          const angle = (i / 12) * Math.PI * 2;
+        {Array.from({ length: 16 }, (_, i) => {
+          const angle = (i / 16) * Math.PI * 2;
           return (
-            <mesh
-              key={i}
-              position={[
-                Math.cos(angle) * radius,
-                Math.sin(angle) * radius,
-                0.05
-              ]}
-            >
-              <sphereGeometry args={[0.08, 8, 8]} />
+            <mesh key={i} position={[Math.cos(angle) * 6.5, Math.sin(angle) * 6.5, 0.05]}>
+              <octahedronGeometry args={[0.1, 0]} />
               <meshStandardMaterial
                 color="#ff00bf"
                 emissive="#ff00bf"
-                emissiveIntensity={1}
+                emissiveIntensity={1.5}
               />
             </mesh>
           );
         })}
       </group>
       
-      {/* Inner rune ring */}
-      <group ref={innerRef}>
+      {/* Middle ring with 12 markers */}
+      <group ref={middleRef}>
         <mesh>
-          <torusGeometry args={[radius * 0.7, 0.04, 8, 48]} />
+          <torusGeometry args={[5.5, 0.045, 8, 64]} />
           <meshStandardMaterial
             color="#ff00bf"
             emissive="#ff00bf"
-            emissiveIntensity={0.5}
+            emissiveIntensity={0.6}
             transparent
-            opacity={0.6}
-            metalness={0.9}
-            roughness={0.2}
+            opacity={0.7}
           />
         </mesh>
-        
-        {/* Inner ring markers */}
-        {RUNES.slice(12, 18).map((rune, i) => {
-          const angle = (i / 6) * Math.PI * 2;
+        {Array.from({ length: 12 }, (_, i) => {
+          const angle = (i / 12) * Math.PI * 2;
           return (
-            <mesh
-              key={i}
-              position={[
-                Math.cos(angle) * radius * 0.7,
-                Math.sin(angle) * radius * 0.7,
-                0.05
-              ]}
-            >
-              <octahedronGeometry args={[0.06, 0]} />
+            <mesh key={i} position={[Math.cos(angle) * 5.5, Math.sin(angle) * 5.5, 0.05]}>
+              <dodecahedronGeometry args={[0.08, 0]} />
               <meshStandardMaterial
                 color="#ffcc00"
                 emissive="#ffcc00"
-                emissiveIntensity={1.2}
+                emissiveIntensity={1.8}
               />
             </mesh>
           );
         })}
       </group>
       
-      {/* Center neural pattern */}
-      <mesh>
-        <ringGeometry args={[0.5, 0.6, 6]} />
-        <meshStandardMaterial
-          color="#ffcc00"
-          emissive="#ffcc00"
-          emissiveIntensity={0.8}
-          transparent
-          opacity={0.5}
-        />
-      </mesh>
+      {/* Inner ring with 8 markers */}
+      <group ref={innerRef}>
+        <mesh>
+          <torusGeometry args={[4.5, 0.035, 8, 48]} />
+          <meshStandardMaterial
+            color="#ffcc00"
+            emissive="#ffcc00"
+            emissiveIntensity={0.5}
+            transparent
+            opacity={0.6}
+          />
+        </mesh>
+        {Array.from({ length: 8 }, (_, i) => {
+          const angle = (i / 8) * Math.PI * 2;
+          return (
+            <mesh key={i} position={[Math.cos(angle) * 4.5, Math.sin(angle) * 4.5, 0.05]}>
+              <tetrahedronGeometry args={[0.1, 0]} />
+              <meshStandardMaterial
+                color="#bf00ff"
+                emissive="#bf00ff"
+                emissiveIntensity={1.3}
+              />
+            </mesh>
+          );
+        })}
+      </group>
+      
+      {/* Core hexagonal seal */}
+      <group ref={coreRef}>
+        <mesh>
+          <ringGeometry args={[0.6, 0.8, 6]} />
+          <meshStandardMaterial
+            color="#ffcc00"
+            emissive="#ffcc00"
+            emissiveIntensity={1}
+            transparent
+            opacity={0.7}
+          />
+        </mesh>
+        <mesh>
+          <ringGeometry args={[0.3, 0.5, 6]} />
+          <meshStandardMaterial
+            color="#bf00ff"
+            emissive="#bf00ff"
+            emissiveIntensity={0.8}
+            transparent
+            opacity={0.6}
+          />
+        </mesh>
+      </group>
     </group>
   );
 };
 
-// ==================== Energy Chains Connecting Board ====================
+// ==================== ENERGY CHAINS FROM ABOVE ====================
 const EnergyChains = () => {
   const chainsRef = useRef();
   
   const chainData = useMemo(() => {
     const chains = [];
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const radius = 5.5;
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const radius = 5.8;
       chains.push({
-        start: [Math.cos(angle) * radius, 6, Math.sin(angle) * radius],
-        end: [Math.cos(angle) * 1.5, 0.3, Math.sin(angle) * 1.5],
-        phase: i * 0.8
+        start: [Math.cos(angle) * radius, 8, Math.sin(angle) * radius],
+        end: [Math.cos(angle) * 1.8, 0.2, Math.sin(angle) * 1.8],
+        phase: i * 0.5,
+        color: i % 3 === 0 ? '#bf00ff' : i % 3 === 1 ? '#ff00bf' : '#ffcc00'
       });
     }
     return chains;
@@ -266,9 +324,9 @@ const EnergyChains = () => {
     if (chainsRef.current) {
       chainsRef.current.children.forEach((chain, i) => {
         if (chain.material) {
-          const pulse = Math.sin(state.clock.elapsedTime * 4 + chainData[i].phase) * 0.4 + 0.6;
+          const pulse = Math.sin(state.clock.elapsedTime * 4.5 + chainData[i].phase) * 0.4 + 0.6;
           chain.material.opacity = pulse;
-          chain.material.emissiveIntensity = pulse * 1.5;
+          chain.material.emissiveIntensity = pulse * 1.8;
         }
       });
     }
@@ -278,29 +336,29 @@ const EnergyChains = () => {
     <group ref={chainsRef}>
       {chainData.map((chain, i) => {
         const points = [];
-        const segments = 25;
+        const segments = 30;
         for (let j = 0; j <= segments; j++) {
           const t = j / segments;
           const x = chain.start[0] + (chain.end[0] - chain.start[0]) * t;
-          const y = chain.start[1] + (chain.end[1] - chain.start[1]) * t + Math.sin(t * Math.PI) * 1.5;
+          const y = chain.start[1] + (chain.end[1] - chain.start[1]) * t + Math.sin(t * Math.PI) * 2;
           const z = chain.start[2] + (chain.end[2] - chain.start[2]) * t;
           // Add wave effect
-          const wave = Math.sin(t * Math.PI * 4 + i) * 0.15;
+          const wave = Math.sin(t * Math.PI * 5 + i * 0.5) * 0.12;
           points.push(new THREE.Vector3(x + wave, y, z + wave));
         }
         const curve = new THREE.CatmullRomCurve3(points);
         
         return (
           <mesh key={i}>
-            <tubeGeometry args={[curve, 32, 0.025, 8, false]} />
+            <tubeGeometry args={[curve, 40, 0.02, 8, false]} />
             <meshStandardMaterial
-              color="#bf00ff"
-              emissive="#ff00bf"
-              emissiveIntensity={1}
+              color={chain.color}
+              emissive={chain.color}
+              emissiveIntensity={1.2}
               transparent
-              opacity={0.7}
+              opacity={0.75}
               metalness={0.9}
-              roughness={0.3}
+              roughness={0.25}
             />
           </mesh>
         );
@@ -309,8 +367,8 @@ const EnergyChains = () => {
   );
 };
 
-// ==================== Neural Particle Field ====================
-const NeuralParticles = ({ count = 300 }) => {
+// ==================== NEURAL PARTICLE FIELD ====================
+const NeuralParticles = ({ count = 400 }) => {
   const particlesRef = useRef();
   
   const particles = useMemo(() => {
@@ -318,17 +376,16 @@ const NeuralParticles = ({ count = 300 }) => {
     const colors = new Float32Array(count * 3);
     
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 16;
-      positions[i * 3 + 1] = Math.random() * 12;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 16;
+      positions[i * 3] = (Math.random() - 0.5) * 18;
+      positions[i * 3 + 1] = Math.random() * 14;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 18;
       
-      // Color variation: purple, pink, gold
       const colorChoice = Math.random();
-      if (colorChoice < 0.5) {
+      if (colorChoice < 0.45) {
         colors[i * 3] = 0.75;
         colors[i * 3 + 1] = 0;
         colors[i * 3 + 2] = 1;
-      } else if (colorChoice < 0.8) {
+      } else if (colorChoice < 0.75) {
         colors[i * 3] = 1;
         colors[i * 3 + 1] = 0;
         colors[i * 3 + 2] = 0.75;
@@ -347,16 +404,15 @@ const NeuralParticles = ({ count = 300 }) => {
       const positions = particlesRef.current.geometry.attributes.position.array;
       
       for (let i = 0; i < count; i++) {
-        positions[i * 3 + 1] += 0.015;
+        positions[i * 3 + 1] += 0.012;
         
-        if (positions[i * 3 + 1] > 12) {
+        if (positions[i * 3 + 1] > 14) {
           positions[i * 3 + 1] = 0;
         }
         
-        // Subtle spiral motion
-        const angle = state.clock.elapsedTime * 0.3 + i * 0.05;
-        positions[i * 3] += Math.sin(angle) * 0.005;
-        positions[i * 3 + 2] += Math.cos(angle) * 0.005;
+        const angle = state.clock.elapsedTime * 0.35 + i * 0.04;
+        positions[i * 3] += Math.sin(angle) * 0.004;
+        positions[i * 3 + 2] += Math.cos(angle) * 0.004;
       }
       
       particlesRef.current.geometry.attributes.position.needsUpdate = true;
@@ -380,17 +436,70 @@ const NeuralParticles = ({ count = 300 }) => {
         />
       </bufferGeometry>
       <pointsMaterial
-        size={0.08}
+        size={0.06}
         vertexColors
         transparent
-        opacity={0.7}
+        opacity={0.75}
         sizeAttenuation
+        blending={THREE.AdditiveBlending}
       />
     </points>
   );
 };
 
-// ==================== Main AlphaZero 3D Board Scene ====================
+// ==================== CORNER ANCHORS ====================
+const CornerAnchors = () => {
+  const anchorsRef = useRef();
+  
+  useFrame((state) => {
+    if (anchorsRef.current) {
+      anchorsRef.current.children.forEach((anchor, i) => {
+        anchor.rotation.y = state.clock.elapsedTime * (i % 2 === 0 ? 0.5 : -0.5);
+        const scale = 1 + Math.sin(state.clock.elapsedTime * 2 + i) * 0.1;
+        anchor.scale.setScalar(scale);
+      });
+    }
+  });
+  
+  const corners = [
+    [-4.8, -4.8],
+    [-4.8, 4.8],
+    [4.8, -4.8],
+    [4.8, 4.8]
+  ];
+  
+  return (
+    <group ref={anchorsRef}>
+      {corners.map(([x, z], i) => (
+        <group key={i} position={[x, 0.1, z]}>
+          <mesh>
+            <octahedronGeometry args={[0.25, 0]} />
+            <meshStandardMaterial
+              color="#bf00ff"
+              emissive="#ff00bf"
+              emissiveIntensity={1.2}
+              metalness={0.95}
+              roughness={0.1}
+            />
+          </mesh>
+          <mesh>
+            <octahedronGeometry args={[0.35, 0]} />
+            <meshStandardMaterial
+              color="#bf00ff"
+              emissive="#bf00ff"
+              emissiveIntensity={0.4}
+              transparent
+              opacity={0.25}
+              wireframe
+            />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+};
+
+// ==================== MAIN ALPHAZERO 3D BOARD SCENE ====================
 const AlphaZeroBoard3DScene = ({
   boardPosition = [0, 0, 0],
   pieces,
@@ -403,11 +512,10 @@ const AlphaZeroBoard3DScene = ({
 }) => {
   const boardRef = useRef();
   
-  // Gentle floating animation for the entire board
   useFrame((state) => {
     if (boardRef.current) {
-      boardRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.4) * 0.08;
-      boardRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.15) * 0.015;
+      boardRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.35) * 0.06;
+      boardRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.12) * 0.01;
     }
   });
   
@@ -453,45 +561,60 @@ const AlphaZeroBoard3DScene = ({
   
   return (
     <group rotation={playerColor === 'black' ? [0, Math.PI, 0] : [0, 0, 0]}>
-      {/* Rune circle seal beneath board */}
-      <RuneCircleSeal radius={6} />
+      {/* THE SEAL - Runic circles beneath */}
+      <RunicSealCircles />
       
-      {/* Energy chains from above */}
+      {/* Energy chains from above - BADASS */}
       <EnergyChains />
       
       {/* Neural particles */}
-      <NeuralParticles count={250} />
+      <NeuralParticles count={350} />
+      
+      {/* Corner anchors */}
+      <CornerAnchors />
       
       {/* Main board group */}
       <group ref={boardRef} position={boardPosition}>
-        {/* Board base - dark crystalline */}
-        <mesh position={[0, -0.15, 0]} receiveShadow>
-          <boxGeometry args={[9.5, 0.25, 9.5]} />
+        {/* Board base - crystalline dark */}
+        <mesh position={[0, -0.18, 0]} receiveShadow>
+          <boxGeometry args={[10, 0.3, 10]} />
           <meshPhysicalMaterial
-            color="#0a0818"
-            metalness={0.8}
-            roughness={0.2}
+            color="#080410"
+            metalness={0.85}
+            roughness={0.15}
             emissive="#1a0030"
-            emissiveIntensity={0.2}
-            transmission={0.1}
-            thickness={1}
+            emissiveIntensity={0.25}
+            transmission={0.15}
+            thickness={1.5}
           />
         </mesh>
         
-        {/* Glowing edge */}
-        <mesh position={[0, -0.1, 0]}>
-          <boxGeometry args={[9.8, 0.08, 9.8]} />
+        {/* Glowing edge frame */}
+        <mesh position={[0, -0.08, 0]}>
+          <boxGeometry args={[10.3, 0.1, 10.3]} />
           <meshStandardMaterial
             color="#bf00ff"
             emissive="#bf00ff"
-            emissiveIntensity={0.6}
+            emissiveIntensity={0.7}
             transparent
-            opacity={0.7}
+            opacity={0.75}
           />
         </mesh>
         
-        {/* Neural chain border */}
-        <NeuralChainBorder />
+        {/* Inner edge glow */}
+        <mesh position={[0, -0.05, 0]}>
+          <boxGeometry args={[9.8, 0.06, 9.8]} />
+          <meshStandardMaterial
+            color="#ff00bf"
+            emissive="#ff00bf"
+            emissiveIntensity={0.5}
+            transparent
+            opacity={0.5}
+          />
+        </mesh>
+        
+        {/* Chain border */}
+        <ChainBorder />
         
         {/* Board squares */}
         {squares.map((sq) => {
@@ -515,7 +638,7 @@ const AlphaZeroBoard3DScene = ({
           );
         })}
         
-        {/* Chess pieces - AlphaZero style */}
+        {/* Chess pieces - ALPHAZERO STYLE */}
         {pieceElements.map((piece) => (
           <AlphaZeroPiece3D
             key={piece.key}
@@ -531,8 +654,9 @@ const AlphaZeroBoard3DScene = ({
           />
         ))}
         
-        {/* Ethereal glow under board */}
-        <pointLight position={[0, -1.5, 0]} intensity={2} color="#bf00ff" distance={12} />
+        {/* Ethereal glow beneath board */}
+        <pointLight position={[0, -2, 0]} intensity={3} color="#bf00ff" distance={15} />
+        <pointLight position={[0, -1.5, 0]} intensity={1.5} color="#ff00bf" distance={10} />
       </group>
     </group>
   );
