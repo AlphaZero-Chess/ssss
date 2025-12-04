@@ -1,10 +1,10 @@
-import React, { useRef, useMemo, useEffect, Suspense } from 'react';
+import React, { useRef, useEffect, Suspense, memo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 
-// Import OPTIMIZED AlphaZero 3D components (performance-tuned)
-import AlphaZeroBoard3DScene from './Chess3D/AlphaZeroBoard3DOptimized';
-import AlphaZeroEnvironment3D from './Chess3D/AlphaZeroEnvironment3DOptimized';
+// Import ULTRA-OPTIMIZED AlphaZero 3D components (maximum performance)
+import AlphaZeroBoard3DScene from './Chess3D/AlphaZeroBoard3DUltra';
+import AlphaZeroEnvironment3D from './Chess3D/AlphaZeroEnvironment3DUltra';
 
 // Parse FEN to get piece positions for the AlphaZero board format
 function parseFENtoObject(fen) {
@@ -50,10 +50,10 @@ const LoadingFallback = () => {
   );
 };
 
-// Main 3D scene - Uses the sophisticated AlphaZero components
-function Chess3DScene({ position, lastMove, playerColor, onSquareClick }) {
+// Main 3D scene - Uses the ultra-optimized AlphaZero components
+const Chess3DScene = memo(function Chess3DScene({ position, lastMove, playerColor, onSquareClick, selectedSquare, validMoves }) {
   // Parse position to AlphaZero format
-  const pieces = useMemo(() => parseFENtoObject(position), [position]);
+  const pieces = parseFENtoObject(position);
   const controlsRef = useRef();
   
   // Reset camera on color change
@@ -85,28 +85,26 @@ function Chess3DScene({ position, lastMove, playerColor, onSquareClick }) {
       />
       
       {/* Fog for depth */}
-      <fog attach="fog" args={['#030308', 60, 250]} />
+      <fog attach="fog" args={['#030308', 50, 180]} />
       
-      {/* AlphaZero Environment - Sophisticated background */}
+      {/* AlphaZero Environment - Ultra-optimized background */}
       <AlphaZeroEnvironment3D />
       
-      {/* AlphaZero Board Scene - The ultimate sophisticated chess board */}
+      {/* AlphaZero Board Scene - Ultra-optimized chess board */}
       <AlphaZeroBoard3DScene
-        boardPosition={[0, 0, 0]}
         pieces={pieces}
-        selectedSquare={null}
-        validMoves={[]}
+        selectedSquare={selectedSquare}
+        validMoves={validMoves}
         lastMove={lastMove}
         onSquareClick={onSquareClick}
-        onPieceClick={onSquareClick}
         playerColor={playerColor}
       />
     </>
   );
-}
+});
 
 // Main exported component - The Ultimate AlphaZero 3D Chess Experience
-const Chess3DBoard = ({ position, lastMove, playerColor, boardSize, onSquareClick }) => {
+const Chess3DBoard = memo(function Chess3DBoard({ position, lastMove, playerColor, boardSize, onSquareClick, selectedSquare, validMoves }) {
   return (
     <div
       style={{
@@ -129,9 +127,11 @@ const Chess3DBoard = ({ position, lastMove, playerColor, boardSize, onSquareClic
           alpha: true,
           powerPreference: 'high-performance',
           stencil: false,
-          depth: true
+          depth: true,
+          failIfMajorPerformanceCaveat: false
         }}
-        performance={{ min: 0.5 }}
+        frameloop="demand"
+        performance={{ min: 0.3, max: 1 }}
       >
         <Suspense fallback={<LoadingFallback />}>
           <Chess3DScene
@@ -139,6 +139,8 @@ const Chess3DBoard = ({ position, lastMove, playerColor, boardSize, onSquareClic
             lastMove={lastMove}
             playerColor={playerColor}
             onSquareClick={onSquareClick}
+            selectedSquare={selectedSquare}
+            validMoves={validMoves}
           />
         </Suspense>
       </Canvas>
@@ -163,6 +165,6 @@ const Chess3DBoard = ({ position, lastMove, playerColor, boardSize, onSquareClic
       </div>
     </div>
   );
-};
+});
 
 export default Chess3DBoard;
