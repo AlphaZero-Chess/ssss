@@ -2,11 +2,11 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-// Elder Futhark Runes for environment
+// Elder Futhark Runes - Sacred symbols of AlphaZero mastery
 const RUNES = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛇ', 'ᛈ', 'ᛉ', 'ᛋ', 'ᛏ', 'ᛒ', 'ᛖ', 'ᛗ', 'ᛚ', 'ᛜ', 'ᛞ', 'ᛟ'];
 
-// ==================== OVERWHELMING COSMIC PARTICLE FIELD ====================
-export const CosmicParticleField = ({ count = 4500 }) => {
+// ==================== OVERWHELMING SOPHISTICATED COSMIC PARTICLE FIELD ====================
+export const CosmicParticleField = ({ count = 5500 }) => {
   const particlesRef = useRef();
   
   const particles = useMemo(() => {
@@ -15,8 +15,8 @@ export const CosmicParticleField = ({ count = 4500 }) => {
     const sizes = new Float32Array(count);
     
     for (let i = 0; i < count; i++) {
-      // Spread in massive sphere with depth variation
-      const radius = 50 + Math.random() * 220;
+      // Spread in massive sphere with depth variation and clustering
+      const radius = 45 + Math.random() * 250;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       
@@ -24,31 +24,36 @@ export const CosmicParticleField = ({ count = 4500 }) => {
       positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
       positions[i * 3 + 2] = radius * Math.cos(phi);
       
-      // AlphaZero color palette: deep purple, hot pink, gold, ethereal white
+      // AlphaZero color palette: deep purple, hot pink, gold, ethereal white, cyan
       const colorChoice = Math.random();
-      if (colorChoice < 0.32) {
+      if (colorChoice < 0.28) {
         // Deep purple
-        colors[i * 3] = 0.55 + Math.random() * 0.25;
+        colors[i * 3] = 0.5 + Math.random() * 0.3;
         colors[i * 3 + 1] = 0;
-        colors[i * 3 + 2] = 0.85 + Math.random() * 0.15;
-      } else if (colorChoice < 0.55) {
+        colors[i * 3 + 2] = 0.8 + Math.random() * 0.2;
+      } else if (colorChoice < 0.48) {
         // Hot pink/magenta
-        colors[i * 3] = 0.85 + Math.random() * 0.15;
+        colors[i * 3] = 0.8 + Math.random() * 0.2;
         colors[i * 3 + 1] = 0;
-        colors[i * 3 + 2] = 0.55 + Math.random() * 0.35;
-      } else if (colorChoice < 0.78) {
+        colors[i * 3 + 2] = 0.5 + Math.random() * 0.4;
+      } else if (colorChoice < 0.68) {
         // Gold/amber
         colors[i * 3] = 1;
-        colors[i * 3 + 1] = 0.7 + Math.random() * 0.3;
+        colors[i * 3 + 1] = 0.65 + Math.random() * 0.35;
         colors[i * 3 + 2] = 0;
-      } else {
+      } else if (colorChoice < 0.85) {
         // Ethereal white/cyan
-        colors[i * 3] = 0.85 + Math.random() * 0.15;
+        colors[i * 3] = 0.8 + Math.random() * 0.2;
         colors[i * 3 + 1] = 0.85 + Math.random() * 0.15;
+        colors[i * 3 + 2] = 1;
+      } else {
+        // Cyan accent
+        colors[i * 3] = 0;
+        colors[i * 3 + 1] = 0.9 + Math.random() * 0.1;
         colors[i * 3 + 2] = 1;
       }
       
-      sizes[i] = 0.15 + Math.random() * 0.9;
+      sizes[i] = 0.12 + Math.random() * 1;
     }
     
     return { positions, colors, sizes };
@@ -56,9 +61,9 @@ export const CosmicParticleField = ({ count = 4500 }) => {
   
   useFrame((state) => {
     if (particlesRef.current) {
-      particlesRef.current.rotation.y += 0.00012;
-      particlesRef.current.rotation.x += 0.00006;
-      particlesRef.current.rotation.z += 0.00003;
+      particlesRef.current.rotation.y += 0.0001;
+      particlesRef.current.rotation.x += 0.00005;
+      particlesRef.current.rotation.z += 0.00002;
     }
   });
   
@@ -79,10 +84,10 @@ export const CosmicParticleField = ({ count = 4500 }) => {
         />
       </bufferGeometry>
       <pointsMaterial
-        size={0.65}
+        size={0.7}
         vertexColors
         transparent
-        opacity={0.9}
+        opacity={0.92}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
       />
@@ -90,7 +95,7 @@ export const CosmicParticleField = ({ count = 4500 }) => {
   );
 };
 
-// ==================== SOPHISTICATED NEURAL NETWORK ====================
+// ==================== ULTRA SOPHISTICATED NEURAL NETWORK ====================
 export const NeuralNetworkViz = () => {
   const nodesRef = useRef();
   const connectionsRef = useRef();
