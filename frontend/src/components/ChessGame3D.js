@@ -108,90 +108,7 @@ function ElectricArc({ start, end, intensity = 1 }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// CHAIN LINK - 3D Rune-engraved chain link
-// ═══════════════════════════════════════════════════════════════════════
-function ChainLink({ position, rotation = [0, 0, 0], rune, scale = 1 }) {
-  const meshRef = useRef();
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 2 + position[0]) * 0.02;
-    }
-  });
-
-  return (
-    <group ref={meshRef} position={position} rotation={rotation} scale={scale}>
-      {/* Torus for chain link */}
-      <mesh>
-        <torusGeometry args={[0.15, 0.04, 8, 16]} />
-        <meshStandardMaterial
-          color="#3a2a5a"
-          metalness={0.9}
-          roughness={0.2}
-          emissive={ALPHA_PURPLE}
-          emissiveIntensity={0.2}
-        />
-      </mesh>
-      {/* Rune text on link */}
-      <Text
-        position={[0, 0, 0.05]}
-        fontSize={0.08}
-        color={ALPHA_GOLD}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {rune}
-      </Text>
-    </group>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// CHAIN SYSTEM - Connecting chains around the board
-// ═══════════════════════════════════════════════════════════════════════
-function ChainSystem() {
-  const chains = useMemo(() => {
-    const result = [];
-    // Corner chains
-    const corners = [
-      { start: [-5, 0, -5], dir: [1, 0.5, 1] },
-      { start: [5, 0, -5], dir: [-1, 0.5, 1] },
-      { start: [-5, 0, 5], dir: [1, 0.5, -1] },
-      { start: [5, 0, 5], dir: [-1, 0.5, -1] }
-    ];
-
-    corners.forEach((corner, ci) => {
-      for (let i = 0; i < 8; i++) {
-        result.push({
-          position: [
-            corner.start[0] + corner.dir[0] * i * 0.4,
-            corner.start[1] + corner.dir[1] * i * 0.4 + 1,
-            corner.start[2] + corner.dir[2] * i * 0.4
-          ],
-          rotation: [0, Math.PI / 4 * (ci % 2 === 0 ? 1 : -1), Math.PI / 2],
-          rune: RUNES[(ci * 8 + i) % RUNES.length]
-        });
-      }
-    });
-
-    return result;
-  }, []);
-
-  return (
-    <group>
-      {chains.map((chain, i) => (
-        <ChainLink
-          key={i}
-          position={chain.position}
-          rotation={chain.rotation}
-          rune={chain.rune}
-          scale={0.8}
-        />
-      ))}
-    </group>
-  );
-}
+// Chain system removed - clean AlphaZero aesthetic
 
 // ═══════════════════════════════════════════════════════════════════════
 // RUNE SEAL CIRCLE - Rotating mystical seal
@@ -651,9 +568,6 @@ function ChessScene({
       
       {/* Mystical seal */}
       <RuneSealCircle radius={6} y={-0.6} />
-      
-      {/* Chains */}
-      <ChainSystem />
       
       {/* Chess Board */}
       <ChessBoard3D
