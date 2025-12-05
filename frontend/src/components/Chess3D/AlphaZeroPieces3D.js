@@ -2,6 +2,9 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+// Elder Futhark Runes - Sacred symbols of mastery
+const RUNES = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛇ', 'ᛈ', 'ᛉ', 'ᛋ', 'ᛏ', 'ᛒ', 'ᛖ', 'ᛗ', 'ᛚ', 'ᛜ', 'ᛞ', 'ᛟ'];
+
 // ==================== ULTRA-SOPHISTICATED NEURAL MATERIAL ====================
 const useNeuralMaterial = (color, isSelected = false, isHovered = false, pieceType = 'default') => {
   return useMemo(() => {
@@ -35,17 +38,154 @@ const useNeuralMaterial = (color, isSelected = false, isHovered = false, pieceTy
   }, [color, isSelected, isHovered]);
 };
 
+// ==================== BADASS CHAIN LINK - SEAL STYLE ====================
+const SealChainLink = ({ position, rotation, scale = 1, color, glowIntensity = 1 }) => {
+  const linkRef = useRef();
+  
+  useFrame((state) => {
+    if (linkRef.current) {
+      const pulse = Math.sin(state.clock.elapsedTime * 4 + position[0] + position[2]) * 0.3 + 0.7;
+      linkRef.current.material.emissiveIntensity = pulse * glowIntensity;
+    }
+  });
+  
+  return (
+    <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
+      {/* Primary chain torus */}
+      <mesh ref={linkRef}>
+        <torusGeometry args={[0.05, 0.018, 12, 20]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.9}
+          metalness={0.98}
+          roughness={0.08}
+        />
+      </mesh>
+      {/* Inner detail ring */}
+      <mesh>
+        <torusGeometry args={[0.035, 0.006, 8, 16]} />
+        <meshStandardMaterial
+          color="#ffcc00"
+          emissive="#ffcc00"
+          emissiveIntensity={1.2}
+          transparent
+          opacity={0.7}
+        />
+      </mesh>
+    </group>
+  );
+};
+
+// ==================== ULTRA-SOPHISTICATED CHAIN SYSTEM (SEAL OF THE HIDDEN MASTER) ====================
+const SealChainSystem = ({ position, color, count = 8, intensity = 1.2 }) => {
+  const chainsRef = useRef();
+  
+  const chains = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => {
+      const angle = (i / count) * Math.PI * 2;
+      const baseLength = 0.7 + Math.random() * 0.6;
+      const links = [];
+      const linkCount = 8 + Math.floor(Math.random() * 5);
+      
+      for (let j = 0; j < linkCount; j++) {
+        const t = j / linkCount;
+        const r = 0.25 + t * baseLength;
+        // Create spiral chain pattern
+        const spiralAngle = angle + t * Math.PI * 0.5;
+        links.push({
+          pos: [
+            Math.cos(spiralAngle) * r,
+            0.18 + Math.sin(t * Math.PI) * 0.4 + Math.sin(t * Math.PI * 3) * 0.1,
+            Math.sin(spiralAngle) * r
+          ],
+          rot: [Math.PI / 2 + t * 0.5, spiralAngle + j * 0.4, t * 0.3],
+          scale: 0.75 + Math.sin(t * Math.PI) * 0.5
+        });
+      }
+      
+      return {
+        angle,
+        links,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.35 + Math.random() * 0.35
+      };
+    });
+  }, [count]);
+  
+  useFrame((state) => {
+    if (chainsRef.current) {
+      chainsRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
+    }
+  });
+  
+  const chainColor = color === 'white' ? '#a070ff' : '#bf00ff';
+  const secondaryColor = color === 'white' ? '#ffcc00' : '#ff00bf';
+  
+  return (
+    <group ref={chainsRef}>
+      {chains.map((chain, i) => (
+        <group key={i}>
+          {chain.links.map((link, j) => (
+            <SealChainLink
+              key={j}
+              position={link.pos}
+              rotation={link.rot}
+              scale={link.scale}
+              color={j % 3 === 0 ? chainColor : j % 3 === 1 ? secondaryColor : '#ffcc00'}
+              glowIntensity={intensity}
+            />
+          ))}
+          {/* Chain connection energy tube */}
+          {(() => {
+            const points = chain.links.map(l => new THREE.Vector3(...l.pos));
+            if (points.length > 2) {
+              const curve = new THREE.CatmullRomCurve3(points);
+              return (
+                <mesh>
+                  <tubeGeometry args={[curve, 32, 0.012, 8, false]} />
+                  <meshStandardMaterial
+                    color={chainColor}
+                    emissive={chainColor}
+                    emissiveIntensity={0.8}
+                    transparent
+                    opacity={0.45}
+                  />
+                </mesh>
+              );
+            }
+            return null;
+          })()}
+        </group>
+      ))}
+      {/* Central binding seal */}
+      <mesh position={[0, 0.2, 0]}>
+        <octahedronGeometry args={[0.08, 0]} />
+        <meshStandardMaterial
+          color="#ffcc00"
+          emissive="#ffcc00"
+          emissiveIntensity={2.5}
+        />
+      </mesh>
+    </group>
+  );
+};
+
 // ==================== RUNE ENGRAVING RING SYSTEM ====================
 const RuneEngravingRing = ({ radius, height, color, emissive, runeCount = 10, speed = 0.4 }) => {
   const ringRef = useRef();
+  const runesRef = useRef();
   const innerRef = useRef();
   
   useFrame((state) => {
     if (ringRef.current) {
       ringRef.current.rotation.y = state.clock.elapsedTime * speed;
     }
+    if (runesRef.current) {
+      runesRef.current.rotation.y = -state.clock.elapsedTime * speed * 1.3;
+    }
     if (innerRef.current) {
-      innerRef.current.rotation.y = -state.clock.elapsedTime * speed * 1.3;
+      innerRef.current.rotation.y = state.clock.elapsedTime * speed * 0.7;
     }
   });
   
@@ -92,7 +232,7 @@ const RuneEngravingRing = ({ radius, height, color, emissive, runeCount = 10, sp
       </group>
       
       {/* Rune markers orbiting - octahedron gems */}
-      <group ref={innerRef}>
+      <group ref={runesRef}>
         {Array.from({ length: runeCount }, (_, i) => {
           const angle = (i / runeCount) * Math.PI * 2;
           const isSpecial = i % 3 === 0;
@@ -112,7 +252,44 @@ const RuneEngravingRing = ({ radius, height, color, emissive, runeCount = 10, sp
                   emissiveIntensity={isSpecial ? 2.2 : 1.5}
                 />
               </mesh>
+              {/* Connecting line to center */}
+              {isSpecial && (
+                <mesh>
+                  <cylinderGeometry args={[0.003, 0.003, radius, 6]} />
+                  <meshStandardMaterial
+                    color="#ffcc00"
+                    emissive="#ffcc00"
+                    emissiveIntensity={0.6}
+                    transparent
+                    opacity={0.3}
+                  />
+                </mesh>
+              )}
             </group>
+          );
+        })}
+      </group>
+      
+      {/* Inner rotating pattern */}
+      <group ref={innerRef}>
+        {Array.from({ length: 4 }, (_, i) => {
+          const angle = (i / 4) * Math.PI * 2;
+          return (
+            <mesh
+              key={i}
+              position={[
+                Math.cos(angle) * radius * 0.5,
+                0,
+                Math.sin(angle) * radius * 0.5
+              ]}
+            >
+              <tetrahedronGeometry args={[0.02, 0]} />
+              <meshStandardMaterial
+                color={color}
+                emissive={color}
+                emissiveIntensity={1.8}
+              />
+            </mesh>
           );
         })}
       </group>
@@ -171,6 +348,9 @@ const BasePiece = ({ children, position, color, isSelected, isHovered, onClick, 
     >
       {children}
       
+      {/* BADASS SEAL CHAINS on selected pieces */}
+      {isSelected && <SealChainSystem position={position} color={color} count={10} intensity={1.5} />}
+      
       {/* Triple rune rings around selected piece - THE SEAL */}
       {isSelected && (
         <group position={[0, 0.2, 0]}>
@@ -195,6 +375,16 @@ const BasePiece = ({ children, position, color, isSelected, isHovered, onClick, 
               emissiveIntensity={0.8}
               transparent
               opacity={0.55}
+            />
+          </mesh>
+          <mesh>
+            <torusGeometry args={[0.38, 0.008, 6, 28]} />
+            <meshStandardMaterial
+              color={goldGlow}
+              emissive={goldGlow}
+              emissiveIntensity={0.6}
+              transparent
+              opacity={0.4}
             />
           </mesh>
         </group>
@@ -316,7 +506,7 @@ export const Pawn3D = ({ position, color, isSelected, isHovered, onClick }) => {
   );
 };
 
-// ==================== ROOK - MONOLITHIC OBELISK ====================
+// ==================== ROOK - MONOLITHIC OBELISK (NO TOWER/CASTLE) ====================
 export const Rook3D = ({ position, color, isSelected, isHovered, onClick }) => {
   const material = useNeuralMaterial(color, isSelected, isHovered, 'rook');
   const accentColor = color === 'white' ? '#b090ff' : '#bf00ff';
@@ -425,6 +615,7 @@ export const Knight3D = ({ position, color, isSelected, isHovered, onClick }) =>
   const accentColor = color === 'white' ? '#b090ff' : '#bf00ff';
   const eyeColor = color === 'white' ? '#00ffff' : '#ff0040';
   const goldAccent = '#ffcc00';
+  const secondAccent = color === 'white' ? '#ffffff' : '#ff00bf';
   
   return (
     <BasePiece position={position} color={color} isSelected={isSelected} isHovered={isHovered} onClick={onClick} pieceType="knight">

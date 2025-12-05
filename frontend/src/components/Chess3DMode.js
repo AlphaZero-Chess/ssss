@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CHESS 3D MODE - ALPHAZERO NEURAL AESTHETIC
-// Clean, sophisticated 3D chess board with neural glow effects
+// CHESS 3D MODE - ALPHAZERO HIDDEN MASTER AESTHETIC
+// Highly sophisticated 3D chess board with rune-engraved chains,
+// complex magic seals, and the overwhelming AlphaZero visual signature
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// Rune symbols matching the HiddenMasterLock seal
+const RUNES = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛇ', 'ᛈ', 'ᛉ', 'ᛋ', 'ᛏ', 'ᛒ', 'ᛖ', 'ᛗ', 'ᛚ', 'ᛜ', 'ᛞ', 'ᛟ'];
+
+// Advanced chess piece unicode with sophisticated styling
+const PIECE_SYMBOLS = {
+  'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
+  'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
+};
 
 // Files and ranks for board coordinates
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -34,14 +44,50 @@ const parseFEN = (fen) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// NEURAL SEAL COMPONENT - Rotating geometric patterns
+// SOPHISTICATED CHAIN COMPONENT - Matching HiddenMasterLock aesthetic
 // ═══════════════════════════════════════════════════════════════════════════════
-const NeuralSeal = ({ size, speed, reverse, opacity = 0.6 }) => {
-  const markerCount = 8;
+const RuneChain = ({ position, rotation, count, type, delay = 0 }) => {
+  const links = useMemo(() => (
+    Array.from({ length: count }, (_, i) => ({
+      rune: RUNES[i % RUNES.length],
+      delay: i * 0.08 + delay
+    }))
+  ), [count, delay]);
+
+  return (
+    <div 
+      className="rune-chain-3d"
+      style={{
+        position: 'absolute',
+        ...position,
+        transform: rotation,
+        display: 'flex',
+        gap: '2px',
+        flexDirection: type === 'vertical' ? 'column' : 'row'
+      }}
+    >
+      {links.map((link, i) => (
+        <div 
+          key={i}
+          className="chain-link-3d"
+          style={{ animationDelay: `${link.delay}s` }}
+        >
+          <span className="chain-rune-3d">{link.rune}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAGIC SEAL COMPONENT - Complex rotating rune circles
+// ═══════════════════════════════════════════════════════════════════════════════
+const MagicSeal = ({ size, speed, reverse, opacity = 0.6 }) => {
+  const runeCount = Math.floor(size / 15);
   
   return (
     <div 
-      className="neural-seal-3d"
+      className="magic-seal-3d"
       style={{
         width: size,
         height: size,
@@ -49,36 +95,36 @@ const NeuralSeal = ({ size, speed, reverse, opacity = 0.6 }) => {
         opacity
       }}
     >
-      {/* Outer ring */}
-      <div className="seal-ring-outer" style={{ width: size, height: size }} />
-      
-      {/* Markers around the ring */}
-      {Array.from({ length: markerCount }, (_, i) => (
-        <div 
+      {Array.from({ length: runeCount }, (_, i) => (
+        <span 
           key={i}
-          className="seal-marker"
+          className="seal-rune-3d"
           style={{
-            transform: `rotate(${(360 / markerCount) * i}deg) translateY(${-size / 2 + 8}px)`,
+            transform: `rotate(${(360 / runeCount) * i}deg) translateY(${-size / 2 + 12}px)`,
+            animationDelay: `${i * 0.1}s`
           }}
-        />
+        >
+          {RUNES[i % RUNES.length]}
+        </span>
       ))}
-      
       {/* Inner ring */}
       <div 
-        className="seal-ring-inner"
+        className="seal-inner-ring"
         style={{
           width: size * 0.65,
           height: size * 0.65
         }}
       >
-        {Array.from({ length: 4 }, (_, i) => (
-          <div 
+        {Array.from({ length: 6 }, (_, i) => (
+          <span 
             key={i}
-            className="seal-marker-inner"
+            className="seal-rune-inner-3d"
             style={{
-              transform: `rotate(${90 * i}deg) translateY(${-size * 0.28}px)`
+              transform: `rotate(${60 * i}deg) translateY(${-size * 0.25}px)`
             }}
-          />
+          >
+            {RUNES[(i + 12) % RUNES.length]}
+          </span>
         ))}
       </div>
     </div>
@@ -86,44 +132,37 @@ const NeuralSeal = ({ size, speed, reverse, opacity = 0.6 }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 3D CHESS PIECE COMPONENT - Sophisticated geometric design (no emoji)
+// SOPHISTICATED 3D CHESS PIECE
 // ═══════════════════════════════════════════════════════════════════════════════
-const ChessPiece3D = ({ piece, square, isSelected, onClick, lastMove }) => {
+const ChessPiece3D = ({ piece, square, isSelected, onClick, lastMove, playerColor }) => {
   if (!piece) return null;
   
   const isWhite = piece[0] === 'w';
-  const pieceType = piece[1];
+  const symbol = PIECE_SYMBOLS[piece];
   const isLastMoveSquare = lastMove && (lastMove.from === square || lastMove.to === square);
-  
-  // Get piece height multiplier based on type
-  const getHeightClass = () => {
-    switch (pieceType) {
-      case 'K': return 'piece-king';
-      case 'Q': return 'piece-queen';
-      case 'R': return 'piece-rook';
-      case 'B': return 'piece-bishop';
-      case 'N': return 'piece-knight';
-      case 'P': return 'piece-pawn';
-      default: return 'piece-pawn';
-    }
-  };
   
   return (
     <div 
-      className={`chess-piece-3d ${isSelected ? 'selected' : ''} ${isLastMoveSquare ? 'last-move' : ''} ${isWhite ? 'white-piece' : 'black-piece'} ${getHeightClass()}`}
+      className={`chess-piece-3d ${isSelected ? 'selected' : ''} ${isLastMoveSquare ? 'last-move' : ''}`}
       onClick={onClick}
       data-testid={`piece-${square}`}
     >
-      {/* Piece body - sophisticated 3D geometric form */}
-      <div className="piece-body">
-        <div className="piece-base-ring" />
-        <div className="piece-column" />
-        <div className="piece-crown" />
-        <div className="piece-core" />
+      <div className="piece-glow" />
+      <div className="piece-base" />
+      <span 
+        className={`piece-symbol ${isWhite ? 'white-piece' : 'black-piece'}`}
+        style={{
+          textShadow: isWhite 
+            ? '0 0 15px rgba(255, 220, 180, 0.9), 0 0 30px rgba(255, 200, 150, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8)'
+            : '0 0 15px rgba(150, 100, 255, 0.9), 0 0 30px rgba(120, 80, 200, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8)'
+        }}
+      >
+        {symbol}
+      </span>
+      {/* Rune engraving on piece base */}
+      <div className="piece-rune-engraving">
+        {RUNES[(square.charCodeAt(0) + square.charCodeAt(1)) % RUNES.length]}
       </div>
-      
-      {/* Selection glow */}
-      {isSelected && <div className="piece-selection-aura" />}
     </div>
   );
 };
@@ -228,15 +267,61 @@ const Chess3DMode = ({
       }}
       data-testid="chess-3d-mode"
     >
-      {/* Clean neural background */}
-      <div className="chess-3d-neural-bg">
-        <div className="neural-layer neural-1" />
-        <div className="neural-layer neural-2" />
+      {/* Sophisticated background with void effect */}
+      <div className="chess-3d-void-bg">
+        <div className="void-layer-3d void-1" />
+        <div className="void-layer-3d void-2" />
+        <div className="void-layer-3d void-3" />
       </div>
 
-      {/* Subtle neural seals in background */}
-      <NeuralSeal size={boardSize * 1.6} speed={80} reverse={false} opacity={0.1} />
-      <NeuralSeal size={boardSize * 1.2} speed={60} reverse={true} opacity={0.15} />
+      {/* Complex magic seals in background */}
+      <MagicSeal size={boardSize * 1.8} speed={60} reverse={false} opacity={0.15} />
+      <MagicSeal size={boardSize * 1.4} speed={45} reverse={true} opacity={0.2} />
+      <MagicSeal size={boardSize * 1.0} speed={30} reverse={false} opacity={0.25} />
+
+      {/* Rune chains surrounding the board - basketball lines style wrapping */}
+      <div className="chains-wrapper-3d">
+        {/* Horizontal chains - top */}
+        <RuneChain position={{ top: 0, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={18} type="horizontal" delay={0} />
+        <RuneChain position={{ top: 20, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={16} type="horizontal" delay={0.2} />
+        
+        {/* Horizontal chains - bottom */}
+        <RuneChain position={{ bottom: 0, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={18} type="horizontal" delay={0.4} />
+        <RuneChain position={{ bottom: 20, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={16} type="horizontal" delay={0.6} />
+        
+        {/* Vertical chains - left */}
+        <RuneChain position={{ left: 0, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={16} type="vertical" delay={0.1} />
+        <RuneChain position={{ left: 20, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={14} type="vertical" delay={0.3} />
+        
+        {/* Vertical chains - right */}
+        <RuneChain position={{ right: 0, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={16} type="vertical" delay={0.5} />
+        <RuneChain position={{ right: 20, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={14} type="vertical" delay={0.7} />
+        
+        {/* Diagonal chains - wrapping corners like basketball court lines */}
+        <RuneChain position={{ top: -10, left: -10 }} rotation="rotate(45deg)" count={12} type="horizontal" delay={0.8} />
+        <RuneChain position={{ top: -10, right: -10 }} rotation="rotate(-45deg)" count={12} type="horizontal" delay={0.9} />
+        <RuneChain position={{ bottom: -10, left: -10 }} rotation="rotate(-45deg)" count={12} type="horizontal" delay={1.0} />
+        <RuneChain position={{ bottom: -10, right: -10 }} rotation="rotate(45deg)" count={12} type="horizontal" delay={1.1} />
+        
+        {/* Cross chains through center */}
+        <RuneChain position={{ top: '50%', left: -30, transform: 'translateY(-50%)' }} rotation="" count={20} type="horizontal" delay={1.2} />
+        <RuneChain position={{ left: '50%', top: -30, transform: 'translateX(-50%)' }} rotation="" count={20} type="vertical" delay={1.3} />
+      </div>
+
+      {/* Electric arcs effect */}
+      <div className="electric-arcs-3d">
+        {Array.from({ length: 12 }, (_, i) => (
+          <div 
+            key={i}
+            className="electric-arc-3d"
+            style={{
+              left: `${10 + (i * 8)}%`,
+              top: `${15 + (i % 4) * 20}%`,
+              animationDelay: `${i * 0.15}s`
+            }}
+          />
+        ))}
+      </div>
 
       {/* 3D Board with perspective */}
       <div 
@@ -247,18 +332,18 @@ const Chess3DMode = ({
           height: boardSize
         }}
       >
-        {/* Board base */}
+        {/* Board base with sophisticated engraving */}
         <div className="board-base-3d">
           <div className="board-edge edge-north" />
           <div className="board-edge edge-south" />
           <div className="board-edge edge-east" />
           <div className="board-edge edge-west" />
           
-          {/* Corner accents */}
-          <div className="corner-accent corner-nw" />
-          <div className="corner-accent corner-ne" />
-          <div className="corner-accent corner-sw" />
-          <div className="corner-accent corner-se" />
+          {/* Corner rune stones */}
+          <div className="corner-stone corner-nw"><span>ᛟ</span></div>
+          <div className="corner-stone corner-ne"><span>ᛞ</span></div>
+          <div className="corner-stone corner-sw"><span>ᛜ</span></div>
+          <div className="corner-stone corner-se"><span>ᛚ</span></div>
         </div>
 
         {/* Board squares */}
@@ -276,6 +361,11 @@ const Chess3DMode = ({
               onClick={() => onSquareClick && onSquareClick(square)}
               data-testid={`square-${square}`}
             >
+              {/* Square engraving pattern */}
+              <div className="square-engraving">
+                {(file + rank) % 3 === 0 && <span className="square-rune">{RUNES[(file * 8 + rank) % RUNES.length]}</span>}
+              </div>
+              
               {/* Legal move indicator */}
               {isLegal && !piece && (
                 <div className="legal-move-indicator">
@@ -286,7 +376,7 @@ const Chess3DMode = ({
                 <div className="legal-capture-indicator" />
               )}
               
-              {/* Chess piece - 3D geometric */}
+              {/* Chess piece */}
               {piece && (
                 <ChessPiece3D 
                   piece={piece}
@@ -294,6 +384,7 @@ const Chess3DMode = ({
                   isSelected={isSelected}
                   onClick={() => onSquareClick && onSquareClick(square)}
                   lastMove={lastMove}
+                  playerColor={playerColor}
                 />
               )}
             </div>
@@ -309,13 +400,20 @@ const Chess3DMode = ({
             <span key={r} className="coord-rank" style={{ top: i * squareSize + squareSize / 2 }}>{r}</span>
           ))}
         </div>
+
+        {/* Center seal on board */}
+        <div className="board-center-seal">
+          <MagicSeal size={squareSize * 3} speed={20} reverse={true} opacity={0.3} />
+        </div>
       </div>
 
-      {/* Thinking indicator */}
+      {/* Thinking indicator with AlphaZero aesthetic */}
       {isThinking && (
         <div className="thinking-indicator-3d">
-          <div className="thinking-spinner" />
-          <span className="thinking-text">NEURAL PROCESSING...</span>
+          <div className="thinking-seal">
+            <MagicSeal size={60} speed={2} reverse={false} opacity={0.9} />
+          </div>
+          <span className="thinking-text">CALCULATING...</span>
         </div>
       )}
 
@@ -337,35 +435,61 @@ const Chess3DMode = ({
           user-select: none;
         }
 
-        /* ═══ NEURAL BACKGROUND ═══ */
-        .chess-3d-neural-bg {
+        /* ═══ VOID BACKGROUND ═══ */
+        .chess-3d-void-bg {
           position: absolute;
           inset: -50px;
           pointer-events: none;
           z-index: 0;
         }
 
-        .neural-layer {
+        .void-layer-3d {
           position: absolute;
           inset: 0;
           border-radius: 20px;
         }
 
-        .neural-1 {
-          background: radial-gradient(ellipse at 30% 30%, 
-            rgba(191, 0, 255, 0.08) 0%, 
-            rgba(15, 5, 30, 0.8) 40%, 
-            rgba(5, 0, 15, 0.95) 70%);
+        .void-1 {
+          background: radial-gradient(ellipse at 30% 20%, 
+            transparent 5%, 
+            rgba(15, 5, 30, 0.7) 30%, 
+            rgba(5, 0, 15, 0.9) 70%);
+          animation: void-drift-3d-1 8s ease-in-out infinite;
         }
 
-        .neural-2 {
-          background: radial-gradient(ellipse at 70% 70%, 
-            rgba(255, 0, 191, 0.05) 0%, 
-            transparent 50%);
+        .void-2 {
+          background: radial-gradient(ellipse at 70% 80%, 
+            transparent 5%, 
+            rgba(30, 10, 50, 0.6) 25%, 
+            rgba(10, 0, 25, 0.85) 60%);
+          animation: void-drift-3d-2 10s ease-in-out infinite;
         }
 
-        /* ═══ NEURAL SEALS ═══ */
-        .neural-seal-3d {
+        .void-3 {
+          background: radial-gradient(ellipse at 50% 50%, 
+            rgba(80, 40, 120, 0.1) 0%, 
+            rgba(40, 20, 80, 0.3) 30%, 
+            transparent 60%);
+          animation: void-pulse-3d 4s ease-in-out infinite;
+        }
+
+        @keyframes void-drift-3d-1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(10px, -10px) scale(1.02); }
+        }
+
+        @keyframes void-drift-3d-2 {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(-10px, 10px); }
+        }
+
+        @keyframes void-pulse-3d {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 0.8; }
+        }
+
+        /* ═══ MAGIC SEALS ═══ */
+        .magic-seal-3d {
           position: absolute;
           top: 50%;
           left: 50%;
@@ -377,35 +501,30 @@ const Chess3DMode = ({
           z-index: 1;
         }
 
-        .seal-ring-outer {
+        .seal-rune-3d {
           position: absolute;
-          border: 1px solid rgba(191, 0, 255, 0.25);
-          border-radius: 50%;
+          font-size: 14px;
+          color: rgba(150, 100, 255, 0.7);
+          text-shadow: 
+            0 0 8px rgba(150, 100, 255, 0.9),
+            0 0 16px rgba(100, 50, 200, 0.6);
+          animation: rune-glow-3d 2s ease-in-out infinite;
         }
 
-        .seal-ring-inner {
+        .seal-inner-ring {
           position: absolute;
-          border: 1px solid rgba(255, 0, 191, 0.2);
-          border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-        }
-
-        .seal-marker {
-          position: absolute;
-          width: 4px;
-          height: 4px;
-          background: rgba(191, 0, 255, 0.5);
+          border: 1px solid rgba(150, 100, 255, 0.3);
           border-radius: 50%;
         }
 
-        .seal-marker-inner {
+        .seal-rune-inner-3d {
           position: absolute;
-          width: 3px;
-          height: 3px;
-          background: rgba(255, 204, 0, 0.4);
-          border-radius: 50%;
+          font-size: 12px;
+          color: rgba(200, 150, 255, 0.8);
+          text-shadow: 0 0 10px rgba(200, 150, 255, 1);
         }
 
         @keyframes seal-rotate {
@@ -416,6 +535,101 @@ const Chess3DMode = ({
         @keyframes seal-rotate-reverse {
           from { transform: translate(-50%, -50%) rotate(360deg); }
           to { transform: translate(-50%, -50%) rotate(0deg); }
+        }
+
+        @keyframes rune-glow-3d {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+
+        /* ═══ RUNE CHAINS ═══ */
+        .chains-wrapper-3d {
+          position: absolute;
+          inset: -20px;
+          pointer-events: none;
+          z-index: 2;
+        }
+
+        .rune-chain-3d {
+          pointer-events: none;
+        }
+
+        .chain-link-3d {
+          width: 16px;
+          height: 12px;
+          background: linear-gradient(145deg, 
+            #4a2a7a 0%, 
+            #2a1a4a 40%, 
+            #1a0a3a 70%, 
+            #3a2a5a 100%);
+          border: 2px solid #3a2a5a;
+          border-radius: 5px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 
+            inset 0 1px 3px rgba(150, 100, 255, 0.3),
+            inset 0 -1px 3px rgba(0, 0, 0, 0.7),
+            0 0 6px rgba(100, 50, 200, 0.5),
+            0 0 12px rgba(80, 0, 180, 0.3);
+          animation: chain-rattle-3d 0.4s ease-in-out infinite, chain-glow-3d 1.5s ease-in-out infinite;
+        }
+
+        .chain-rune-3d {
+          font-size: 7px;
+          color: rgba(200, 150, 255, 0.9);
+          text-shadow: 0 0 4px rgba(150, 100, 255, 0.8);
+        }
+
+        @keyframes chain-rattle-3d {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(2deg); }
+          75% { transform: rotate(-2deg); }
+        }
+
+        @keyframes chain-glow-3d {
+          0%, 100% { 
+            box-shadow: 
+              inset 0 1px 3px rgba(150, 100, 255, 0.3),
+              0 0 6px rgba(100, 50, 200, 0.5);
+          }
+          50% { 
+            box-shadow: 
+              inset 0 1px 3px rgba(150, 100, 255, 0.5),
+              0 0 12px rgba(120, 70, 220, 0.7),
+              0 0 20px rgba(100, 20, 200, 0.4);
+          }
+        }
+
+        /* ═══ ELECTRIC ARCS ═══ */
+        .electric-arcs-3d {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 2;
+        }
+
+        .electric-arc-3d {
+          position: absolute;
+          width: 50px;
+          height: 2px;
+          background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(150, 100, 255, 0.8) 20%, 
+            rgba(220, 180, 255, 1) 50%, 
+            rgba(150, 100, 255, 0.8) 80%, 
+            transparent 100%);
+          border-radius: 2px;
+          filter: blur(1px);
+          animation: arc-flash-3d 0.6s ease-in-out infinite;
+        }
+
+        @keyframes arc-flash-3d {
+          0%, 100% { opacity: 0; transform: scaleX(0.5); }
+          15% { opacity: 1; transform: scaleX(1.2); }
+          30% { opacity: 0.2; }
+          45% { opacity: 0.9; transform: scaleX(1); }
+          60% { opacity: 0; }
         }
 
         /* ═══ 3D BOARD ═══ */
@@ -430,20 +644,22 @@ const Chess3DMode = ({
           position: absolute;
           inset: -12px;
           background: linear-gradient(145deg, 
-            #2a1a4a 0%, 
-            #1a0a3a 50%, 
-            #150830 100%);
-          border: 2px solid rgba(191, 0, 255, 0.3);
+            #3a2a5a 0%, 
+            #2a1a4a 30%, 
+            #1a0a3a 70%, 
+            #2a1a4a 100%);
+          border: 3px solid #4a3a6a;
           border-radius: 8px;
           transform: translateZ(-20px);
           box-shadow: 
             0 20px 40px rgba(0, 0, 0, 0.8),
-            0 0 30px rgba(191, 0, 255, 0.15);
+            inset 0 2px 10px rgba(150, 100, 255, 0.2),
+            inset 0 -2px 10px rgba(0, 0, 0, 0.5);
         }
 
         .board-edge {
           position: absolute;
-          background: linear-gradient(to bottom, #3a2a5a, #1a0a3a);
+          background: linear-gradient(to bottom, #4a3a6a, #2a1a4a);
         }
 
         .edge-north, .edge-south {
@@ -464,18 +680,34 @@ const Chess3DMode = ({
         .edge-east { right: -20px; transform: rotateY(90deg); transform-origin: left; }
         .edge-west { left: -20px; transform: rotateY(-90deg); transform-origin: right; }
 
-        .corner-accent {
+        .corner-stone {
           position: absolute;
-          width: 16px;
-          height: 16px;
-          background: radial-gradient(circle, rgba(191, 0, 255, 0.6) 0%, transparent 70%);
-          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          background: linear-gradient(135deg, #5a4a7a 0%, #3a2a5a 100%);
+          border: 2px solid #6a5a8a;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          color: rgba(200, 150, 255, 0.9);
+          text-shadow: 0 0 8px rgba(150, 100, 255, 0.8);
+          box-shadow: 
+            0 0 10px rgba(150, 100, 255, 0.5),
+            inset 0 1px 3px rgba(255, 255, 255, 0.1);
+          animation: corner-pulse 3s ease-in-out infinite;
         }
 
-        .corner-nw { top: -4px; left: -4px; }
-        .corner-ne { top: -4px; right: -4px; }
-        .corner-sw { bottom: -4px; left: -4px; }
-        .corner-se { bottom: -4px; right: -4px; }
+        .corner-nw { top: -6px; left: -6px; }
+        .corner-ne { top: -6px; right: -6px; }
+        .corner-sw { bottom: -6px; left: -6px; }
+        .corner-se { bottom: -6px; right: -6px; }
+
+        @keyframes corner-pulse {
+          0%, 100% { box-shadow: 0 0 10px rgba(150, 100, 255, 0.5); }
+          50% { box-shadow: 0 0 20px rgba(150, 100, 255, 0.8), 0 0 30px rgba(100, 50, 200, 0.4); }
+        }
 
         /* ═══ BOARD SQUARES ═══ */
         .chess-3d-squares {
@@ -497,26 +729,54 @@ const Chess3DMode = ({
 
         .chess-3d-square.light {
           background: linear-gradient(145deg, 
-            rgba(160, 140, 180, 0.9) 0%, 
-            rgba(140, 120, 160, 0.85) 100%);
+            rgba(180, 160, 200, 0.9) 0%, 
+            rgba(160, 140, 180, 0.85) 50%, 
+            rgba(140, 120, 160, 0.9) 100%);
+          box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.2);
         }
 
         .chess-3d-square.dark {
           background: linear-gradient(145deg, 
-            rgba(60, 40, 100, 0.95) 0%, 
-            rgba(40, 25, 70, 0.9) 100%);
+            rgba(80, 60, 120, 0.95) 0%, 
+            rgba(60, 40, 100, 0.9) 50%, 
+            rgba(50, 30, 80, 0.95) 100%);
+          box-shadow: inset 0 0 8px rgba(100, 70, 150, 0.3);
         }
 
         .chess-3d-square:hover {
           transform: translateZ(3px);
-          box-shadow: 0 0 12px rgba(191, 0, 255, 0.35);
+          box-shadow: 0 0 15px rgba(150, 100, 255, 0.4);
         }
 
         .chess-3d-square.selected {
           background: linear-gradient(145deg, 
-            rgba(0, 255, 136, 0.5) 0%, 
-            rgba(0, 200, 100, 0.4) 100%) !important;
-          box-shadow: 0 0 16px rgba(0, 255, 136, 0.5);
+            rgba(100, 200, 150, 0.7) 0%, 
+            rgba(80, 180, 130, 0.6) 100%) !important;
+          box-shadow: 0 0 20px rgba(100, 255, 150, 0.6);
+        }
+
+        .chess-3d-square.legal-move {
+          cursor: pointer;
+        }
+
+        .square-engraving {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+        }
+
+        .square-rune {
+          font-size: 10px;
+          color: rgba(150, 100, 200, 0.3);
+          animation: square-rune-glow 4s ease-in-out infinite;
+        }
+
+        @keyframes square-rune-glow {
+          0%, 100% { opacity: 0.2; }
+          50% { opacity: 0.5; }
         }
 
         .legal-move-indicator {
@@ -532,8 +792,8 @@ const Chess3DMode = ({
           width: 25%;
           height: 25%;
           background: radial-gradient(circle, 
-            rgba(0, 255, 136, 0.7) 0%, 
-            rgba(0, 200, 100, 0.3) 60%, 
+            rgba(150, 100, 255, 0.8) 0%, 
+            rgba(100, 50, 200, 0.4) 60%, 
             transparent 100%);
           border-radius: 50%;
           animation: legal-pulse 1s ease-in-out infinite;
@@ -541,30 +801,30 @@ const Chess3DMode = ({
 
         .legal-capture-indicator {
           position: absolute;
-          inset: 4px;
-          border: 2px solid rgba(255, 100, 100, 0.5);
+          inset: 2px;
+          border: 3px solid rgba(255, 100, 100, 0.6);
           border-radius: 50%;
           animation: capture-pulse 1s ease-in-out infinite;
         }
 
         @keyframes legal-pulse {
-          0%, 100% { transform: scale(1); opacity: 0.7; }
-          50% { transform: scale(1.15); opacity: 1; }
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.2); opacity: 1; }
         }
 
         @keyframes capture-pulse {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.7; }
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.8; }
         }
 
-        /* ═══ 3D CHESS PIECES - GEOMETRIC DESIGN ═══ */
+        /* ═══ CHESS PIECES ═══ */
         .chess-piece-3d {
           position: relative;
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 85%;
-          height: 85%;
+          width: 90%;
+          height: 90%;
           transform-style: preserve-3d;
           transition: transform 0.2s ease;
           cursor: pointer;
@@ -572,145 +832,79 @@ const Chess3DMode = ({
         }
 
         .chess-piece-3d:hover {
-          transform: translateZ(6px) scale(1.08);
+          transform: translateZ(8px) scale(1.1);
         }
 
         .chess-piece-3d.selected {
-          transform: translateZ(10px) scale(1.12);
+          transform: translateZ(12px) scale(1.15);
+          animation: piece-selected-glow 1s ease-in-out infinite;
         }
 
-        .piece-body {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transform-style: preserve-3d;
+        .chess-piece-3d.last-move {
+          animation: last-move-highlight 2s ease-in-out infinite;
         }
 
-        /* Base ring */
-        .piece-base-ring {
+        @keyframes piece-selected-glow {
+          0%, 100% { filter: drop-shadow(0 0 10px rgba(100, 255, 150, 0.8)); }
+          50% { filter: drop-shadow(0 0 20px rgba(100, 255, 150, 1)); }
+        }
+
+        @keyframes last-move-highlight {
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(255, 255, 100, 0.6)); }
+          50% { filter: drop-shadow(0 0 15px rgba(255, 255, 100, 0.9)); }
+        }
+
+        .piece-glow {
           position: absolute;
-          bottom: 10%;
+          inset: -5px;
+          background: radial-gradient(circle, 
+            rgba(150, 100, 255, 0.3) 0%, 
+            transparent 70%);
+          border-radius: 50%;
+          pointer-events: none;
+        }
+
+        .piece-base {
+          position: absolute;
+          bottom: -2px;
           width: 70%;
-          height: 12%;
+          height: 8px;
+          background: linear-gradient(to bottom, 
+            rgba(50, 30, 80, 0.8) 0%, 
+            rgba(30, 15, 50, 0.9) 100%);
           border-radius: 50%;
-          transform: rotateX(75deg);
+          transform: translateZ(-5px) rotateX(80deg);
+          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
         }
 
-        /* Column */
-        .piece-column {
+        .piece-symbol {
+          font-size: 2.2em;
+          line-height: 1;
+          transition: all 0.2s ease;
+        }
+
+        .piece-symbol.white-piece {
+          color: #fff8e8;
+          filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+        }
+
+        .piece-symbol.black-piece {
+          color: #2a1a4a;
+          filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+        }
+
+        .piece-rune-engraving {
           position: absolute;
-          bottom: 15%;
-          width: 35%;
-          border-radius: 3px 3px 8px 8px;
+          bottom: 0;
+          font-size: 8px;
+          color: rgba(150, 100, 255, 0.6);
+          text-shadow: 0 0 4px rgba(150, 100, 255, 0.8);
+          opacity: 0;
+          transition: opacity 0.3s ease;
         }
 
-        /* Crown */
-        .piece-crown {
-          position: absolute;
-          border-radius: 50%;
-        }
-
-        /* Core glow */
-        .piece-core {
-          position: absolute;
-          border-radius: 50%;
-        }
-
-        /* White pieces */
-        .white-piece .piece-base-ring {
-          background: linear-gradient(to bottom, #e8e0f8 0%, #c0b0d8 100%);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-        }
-
-        .white-piece .piece-column {
-          background: linear-gradient(to right, #e8e0f8 0%, #d0c0e8 50%, #e8e0f8 100%);
-          box-shadow: 0 0 8px rgba(160, 120, 255, 0.3);
-        }
-
-        .white-piece .piece-crown {
-          background: radial-gradient(circle at 30% 30%, #ffffff 0%, #e0d0f0 60%, #c8b8e0 100%);
-          box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
-        }
-
-        .white-piece .piece-core {
-          background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(160, 120, 255, 0.4) 100%);
-        }
-
-        /* Black pieces */
-        .black-piece .piece-base-ring {
-          background: linear-gradient(to bottom, #2a1848 0%, #180a30 100%);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-        }
-
-        .black-piece .piece-column {
-          background: linear-gradient(to right, #2a1848 0%, #1a0a38 50%, #2a1848 100%);
-          box-shadow: 0 0 8px rgba(191, 0, 255, 0.4);
-        }
-
-        .black-piece .piece-crown {
-          background: radial-gradient(circle at 30% 30%, #3a2858 0%, #2a1848 60%, #1a0a38 100%);
-          box-shadow: 0 0 12px rgba(191, 0, 255, 0.3);
-        }
-
-        .black-piece .piece-core {
-          background: radial-gradient(circle, rgba(191, 0, 255, 0.8) 0%, rgba(100, 0, 150, 0.3) 100%);
-        }
-
-        /* Piece type sizing */
-        .piece-king .piece-column { height: 45%; }
-        .piece-king .piece-crown { top: 12%; width: 40%; height: 28%; }
-        .piece-king .piece-core { top: 5%; width: 20%; height: 12%; }
-
-        .piece-queen .piece-column { height: 42%; }
-        .piece-queen .piece-crown { top: 14%; width: 38%; height: 26%; }
-        .piece-queen .piece-core { top: 8%; width: 18%; height: 10%; }
-
-        .piece-rook .piece-column { height: 38%; width: 40%; border-radius: 2px; }
-        .piece-rook .piece-crown { top: 18%; width: 42%; height: 20%; border-radius: 3px; }
-        .piece-rook .piece-core { top: 12%; width: 16%; height: 10%; }
-
-        .piece-bishop .piece-column { height: 40%; }
-        .piece-bishop .piece-crown { top: 14%; width: 32%; height: 28%; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; }
-        .piece-bishop .piece-core { top: 6%; width: 14%; height: 10%; }
-
-        .piece-knight .piece-column { height: 35%; }
-        .piece-knight .piece-crown { top: 16%; width: 36%; height: 30%; border-radius: 40% 60% 50% 50%; transform: rotate(-15deg); }
-        .piece-knight .piece-core { top: 14%; left: 55%; width: 12%; height: 10%; }
-
-        .piece-pawn .piece-column { height: 30%; }
-        .piece-pawn .piece-crown { top: 22%; width: 28%; height: 24%; }
-        .piece-pawn .piece-core { top: 18%; width: 12%; height: 10%; }
-
-        /* Selection aura */
-        .piece-selection-aura {
-          position: absolute;
-          inset: -8px;
-          background: radial-gradient(circle, rgba(0, 255, 136, 0.4) 0%, transparent 70%);
-          border-radius: 50%;
-          animation: selection-pulse 1s ease-in-out infinite;
-        }
-
-        @keyframes selection-pulse {
-          0%, 100% { transform: scale(1); opacity: 0.6; }
-          50% { transform: scale(1.1); opacity: 1; }
-        }
-
-        /* Last move highlight */
-        .chess-piece-3d.last-move::after {
-          content: '';
-          position: absolute;
-          inset: -4px;
-          border: 2px solid rgba(255, 204, 0, 0.5);
-          border-radius: 50%;
-          animation: last-move-glow 2s ease-in-out infinite;
-        }
-
-        @keyframes last-move-glow {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.7; }
+        .chess-piece-3d:hover .piece-rune-engraving {
+          opacity: 1;
         }
 
         /* ═══ BOARD COORDINATES ═══ */
@@ -726,7 +920,8 @@ const Chess3DMode = ({
           transform: translateX(-50%);
           font-family: 'Orbitron', sans-serif;
           font-size: 10px;
-          color: rgba(191, 0, 255, 0.5);
+          color: rgba(200, 150, 255, 0.7);
+          text-shadow: 0 0 5px rgba(150, 100, 255, 0.5);
         }
 
         .coord-rank {
@@ -735,7 +930,18 @@ const Chess3DMode = ({
           transform: translateY(-50%);
           font-family: 'Orbitron', sans-serif;
           font-size: 10px;
-          color: rgba(191, 0, 255, 0.5);
+          color: rgba(200, 150, 255, 0.7);
+          text-shadow: 0 0 5px rgba(150, 100, 255, 0.5);
+        }
+
+        /* ═══ CENTER SEAL ═══ */
+        .board-center-seal {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          pointer-events: none;
+          z-index: 1;
         }
 
         /* ═══ THINKING INDICATOR ═══ */
@@ -751,24 +957,22 @@ const Chess3DMode = ({
           z-index: 20;
         }
 
-        .thinking-spinner {
-          width: 40px;
-          height: 40px;
-          border: 2px solid rgba(191, 0, 255, 0.2);
-          border-top-color: rgba(191, 0, 255, 0.8);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
+        .thinking-seal {
+          position: relative;
         }
 
         .thinking-text {
           font-family: 'Orbitron', sans-serif;
           font-size: 11px;
-          color: rgba(191, 0, 255, 0.8);
-          letter-spacing: 2px;
+          color: rgba(200, 150, 255, 0.9);
+          text-shadow: 0 0 10px rgba(150, 100, 255, 0.8);
+          letter-spacing: 3px;
+          animation: thinking-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes thinking-pulse {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
         }
 
         /* ═══ ROTATION HINT ═══ */
@@ -778,7 +982,7 @@ const Chess3DMode = ({
           right: 10px;
           font-family: 'Rajdhani', sans-serif;
           font-size: 10px;
-          color: rgba(150, 130, 180, 0.4);
+          color: rgba(150, 130, 180, 0.5);
           pointer-events: none;
         }
       `}</style>
