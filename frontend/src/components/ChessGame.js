@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Box } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
 
-// Lazy load 3D board for performance - only loads when needed for hidden master
+// Lazy load 3D board for Hidden Master only - keeps bundle optimized
 const Chess3DBoard = lazy(() => import('./Chess3DBoard'));
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -166,8 +166,6 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [currentTurn, setCurrentTurn] = useState('w');
   const [isInCheck, setIsInCheck] = useState(false);
-  // 3D Mode state - only available for hidden master (alphazero)
-  const [is3DMode, setIs3DMode] = useState(() => enemy?.id === 'alphazero');
   const stockfishRef = useRef(null);
   const isEngineReady = useRef(false);
   const boardContainerRef = useRef(null);
@@ -175,8 +173,6 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   const moveCountRef = useRef(0);
   const hasInitializedEngineMove = useRef(false);
   
-  // Check if this is the hidden master (alphazero) for 3D mode support
-  const isHiddenMaster = enemy?.id === 'alphazero';
   // Refs for state setters to use in callbacks (avoid stale closures)
   const setPositionRef = useRef(setPosition);
   const setCurrentTurnRef = useRef(setCurrentTurn);
@@ -630,6 +626,80 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   const isPlayerTurn = (playerColor === 'white' && currentTurn === 'w') || 
                        (playerColor === 'black' && currentTurn === 'b');
 
+  // Check if playing against Hidden Master (AlphaZero)
+  const isHiddenMaster = enemy?.id === 'alphazero';
+
+  // Get valid moves for a square - used by 3D board
+  const getValidMovesForSquare = useCallback((square) => {
+    if (!isPlayerTurn || isThinking || gameStatus !== 'playing') return [];
+    const game = gameRef.current;
+    const piece = game.get(square);
+    if (!piece) return [];
+    
+    // Check if piece belongs to player
+    const pieceColor = piece.color === 'w' ? 'white' : 'black';
+    if (pieceColor !== playerColor) return [];
+    
+    // Get all legal moves from this square
+    const moves = game.moves({ square, verbose: true });
+    return moves.map(m => m.to);
+  }, [isPlayerTurn, isThinking, gameStatus, playerColor]);
+
+  // Handle 3D board move
+  const handle3DMove = useCallback((from, to) => {
+    if (isThinking || gameStatus !== 'playing') return;
+    
+    const game = gameRef.current;
+    const turn = game.turn();
+    const isPlayerTurnNow = (playerColor === 'white' && turn === 'w') || 
+                            (playerColor === 'black' && turn === 'b');
+    
+    if (!isPlayerTurnNow) return;
+    
+    try {
+      const moveResult = game.move({
+        from,
+        to,
+        promotion: 'q'
+      });
+      
+      if (moveResult === null) return;
+      
+      moveCountRef.current++;
+      const newFen = game.fen();
+      
+      console.log('3D Board move:', moveResult.san, 'New FEN:', newFen);
+      
+      setPosition(newFen);
+      setCurrentTurn(game.turn());
+      setIsInCheck(game.isCheck() && !game.isCheckmate());
+      setMoveHistory(prev => [...prev, moveResult.san]);
+      setLastMove({ from, to });
+      
+      if (moveResult.captured) {
+        const capturedColor = moveResult.color === 'w' ? 'black' : 'white';
+        setCapturedPieces(prev => ({
+          ...prev,
+          [capturedColor]: [...prev[capturedColor], moveResult.captured]
+        }));
+      }
+      
+      if (game.isGameOver()) {
+        handleGameOver(game);
+        return;
+      }
+      
+      // Trigger engine move
+      setTimeout(() => {
+        if (stockfishRef.current?.makeEngineMove) {
+          stockfishRef.current.makeEngineMove();
+        }
+      }, 300);
+    } catch (e) {
+      console.error('3D Move error:', e);
+    }
+  }, [isThinking, gameStatus, playerColor, handleGameOver]);
+
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden" data-testid="chess-game-container" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%)' }}>
       {/* Background */}
@@ -759,76 +829,57 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
 
         {/* Chess Board with Resize Handle */}
         <div className={`relative ${isMobile ? 'order-1' : ''}`} ref={boardContainerRef}>
-          {/* 3D Mode Toggle - Only for Hidden Master */}
-          {isHiddenMaster && (
-            <div className="flex justify-center mb-2">
-              <button
-                onClick={() => setIs3DMode(!is3DMode)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all ${
-                  is3DMode 
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-500/30' 
-                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
-                }`}
-                style={{ fontFamily: 'Orbitron, sans-serif' }}
-                data-testid="3d-toggle-btn"
-              >
-                <Box size={14} />
-                {is3DMode ? '3D MODE ACTIVE' : 'ENABLE 3D MODE'}
-              </button>
-            </div>
-          )}
-          
-          {/* Board Container - Conditional 3D or 2D */}
-          {is3DMode && isHiddenMaster ? (
-            // 3D CHESS BOARD - Sophisticated mode for Hidden Master
+          {/* Board Container - Conditional 3D/2D rendering */}
+          {isHiddenMaster ? (
+            /* 3D Chess Board for Hidden Master (AlphaZero) */
             <div 
-              className="chess-board-wrapper p-1.5 rounded-lg relative"
+              className="chess-board-wrapper rounded-xl relative overflow-hidden"
               style={{
-                background: 'linear-gradient(180deg, rgba(15,10,30,0.95) 0%, rgba(5,0,15,0.98) 100%)',
-                boxShadow: `0 0 40px ${enemy?.color}30, 0 0 80px #bf00ff20, inset 0 0 30px rgba(191, 0, 255, 0.1)`,
-                border: `2px solid ${enemy?.color}40`,
-                backdropFilter: 'blur(12px)',
-                width: boardSize + 12,
-                height: boardSize + 12,
+                width: isMobile ? Math.min(350, window.innerWidth - 40) : 500,
+                height: isMobile ? Math.min(350, window.innerWidth - 40) : 500,
+                boxShadow: '0 0 60px #bf00ff30, 0 0 100px #bf00ff10',
+                border: '2px solid #bf00ff40',
               }}
               data-testid="chess-3d-board-container"
             >
               <Suspense fallback={
-                <div 
-                  className="flex items-center justify-center"
-                  style={{ width: boardSize, height: boardSize }}
-                >
+                <div className="w-full h-full flex items-center justify-center bg-[#0a0812]">
                   <div className="text-center">
-                    <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <span className="text-purple-400 text-xs" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                      LOADING 3D BOARD...
-                    </span>
+                    <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-purple-400 text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      INITIALIZING 3D ENGINE...
+                    </p>
                   </div>
                 </div>
               }>
                 <Chess3DBoard
                   position={position}
                   playerColor={playerColor}
-                  boardSize={boardSize}
+                  onMove={handle3DMove}
+                  validMovesForSquare={getValidMovesForSquare}
+                  isThinking={isThinking}
                   lastMove={lastMove}
-                  game={gameRef.current}
-                  canMove={!isThinking && gameStatus === 'playing' && (
-                    (playerColor === 'white' && currentTurn === 'w') || 
-                    (playerColor === 'black' && currentTurn === 'b')
-                  )}
-                  onMove={({ sourceSquare, targetSquare }) => {
-                    // Create a synthetic piece drop event for 3D board
-                    return onDrop({ 
-                      piece: null, 
-                      sourceSquare, 
-                      targetSquare 
-                    });
-                  }}
+                  gameRef={gameRef}
                 />
               </Suspense>
+              
+              {/* 3D Mode indicator */}
+              <div 
+                className="absolute top-2 left-2 px-3 py-1 rounded-full text-xs"
+                style={{
+                  background: 'linear-gradient(135deg, #bf00ff 0%, #ff00bf 100%)',
+                  fontFamily: 'Orbitron, sans-serif',
+                  fontSize: '10px',
+                  color: '#000',
+                  fontWeight: 'bold',
+                  boxShadow: '0 0 15px #bf00ff50'
+                }}
+              >
+                3D MODE
+              </div>
             </div>
           ) : (
-            // 2D CHESS BOARD - Standard mode
+            /* Standard 2D Chess Board for other enemies */
             <div 
               className="chess-board-wrapper p-1.5 rounded-lg relative"
               style={{
@@ -876,30 +927,32 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
             </div>
           )}
           
-          {/* Size Controls */}
-          <div className="flex justify-center gap-2 mt-2">
-            <button
-              onClick={setSmallSize}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
-              style={{ fontFamily: 'Rajdhani, sans-serif' }}
-              data-testid="size-small-btn"
-            >
-              <Minimize2 size={12} />
-              Small
-            </button>
-            <span className="text-xs text-gray-500 flex items-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-              {boardSize}px
-            </span>
-            <button
-              onClick={setLargeSize}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
-              style={{ fontFamily: 'Rajdhani, sans-serif' }}
-              data-testid="size-large-btn"
-            >
-              <Maximize2 size={12} />
-              Large
-            </button>
-          </div>
+          {/* Size Controls - Only for 2D board */}
+          {!isHiddenMaster && (
+            <div className="flex justify-center gap-2 mt-2">
+              <button
+                onClick={setSmallSize}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
+                style={{ fontFamily: 'Rajdhani, sans-serif' }}
+                data-testid="size-small-btn"
+              >
+                <Minimize2 size={12} />
+                Small
+              </button>
+              <span className="text-xs text-gray-500 flex items-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                {boardSize}px
+              </span>
+              <button
+                onClick={setLargeSize}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
+                style={{ fontFamily: 'Rajdhani, sans-serif' }}
+                data-testid="size-large-btn"
+              >
+                <Maximize2 size={12} />
+                Large
+              </button>
+            </div>
+          )}
           
           {/* Check indicator */}
           {isInCheck && (
