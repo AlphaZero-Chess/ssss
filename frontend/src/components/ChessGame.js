@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Box } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
-import ChessGame3D from './ChessGame3D';
+
+// Lazy load 3D board for performance - only loads when needed for hidden master
+const Chess3DBoard = lazy(() => import('./Chess3DBoard'));
 
 // ═══════════════════════════════════════════════════════════════════════
 // PERSONALITY IMPORTS - External personality files
@@ -144,44 +146,7 @@ function getBookMoveForPosition(fen, color, enemyId) {
 // Starting position FEN constant
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-// ═══════════════════════════════════════════════════════════════════════
-// CHESS GAME WRAPPER - Handles 3D Mode Switch for AlphaZero
-// This wrapper is modular and can be removed without affecting the main component
-// ═══════════════════════════════════════════════════════════════════════
-const ChessGameWrapper = ({ enemy, playerColor, onGameEnd, onBack }) => {
-  const isAlphaZero = enemy?.id === 'alphazero';
-  const [is3DMode, setIs3DMode] = useState(isAlphaZero); // Auto-enable for AlphaZero
-  
-  // If playing against AlphaZero in 3D mode, render the 3D component
-  if (isAlphaZero && is3DMode) {
-    return (
-      <ChessGame3D
-        enemy={enemy}
-        playerColor={playerColor}
-        onGameEnd={onGameEnd}
-        onBack={onBack}
-        onToggleView={() => setIs3DMode(false)}
-      />
-    );
-  }
-  
-  // Otherwise render the standard 2D game with 3D toggle option
-  return (
-    <ChessGame2D
-      enemy={enemy}
-      playerColor={playerColor}
-      onGameEnd={onGameEnd}
-      onBack={onBack}
-      isAlphaZero={isAlphaZero}
-      onToggle3D={() => setIs3DMode(true)}
-    />
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════
-// CHESS GAME 2D COMPONENT - Standard board view
-// ═══════════════════════════════════════════════════════════════════════
-const ChessGame2D = ({ enemy, playerColor, onGameEnd, onBack, isAlphaZero, onToggle3D }) => {
+const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   // Create Chess instance lazily to avoid recreating on each render
   const gameRef = useRef(null);
   if (gameRef.current === null) {
@@ -201,6 +166,8 @@ const ChessGame2D = ({ enemy, playerColor, onGameEnd, onBack, isAlphaZero, onTog
   const [isMobile, setIsMobile] = useState(false);
   const [currentTurn, setCurrentTurn] = useState('w');
   const [isInCheck, setIsInCheck] = useState(false);
+  // 3D Mode state - only available for hidden master (alphazero)
+  const [is3DMode, setIs3DMode] = useState(() => enemy?.id === 'alphazero');
   const stockfishRef = useRef(null);
   const isEngineReady = useRef(false);
   const boardContainerRef = useRef(null);
@@ -208,6 +175,8 @@ const ChessGame2D = ({ enemy, playerColor, onGameEnd, onBack, isAlphaZero, onTog
   const moveCountRef = useRef(0);
   const hasInitializedEngineMove = useRef(false);
   
+  // Check if this is the hidden master (alphazero) for 3D mode support
+  const isHiddenMaster = enemy?.id === 'alphazero';
   // Refs for state setters to use in callbacks (avoid stale closures)
   const setPositionRef = useRef(setPosition);
   const setCurrentTurnRef = useRef(setCurrentTurn);
@@ -766,23 +735,6 @@ const ChessGame2D = ({ enemy, playerColor, onGameEnd, onBack, isAlphaZero, onTog
                 <ArrowLeft size={12} />
                 BACK
               </button>
-              {/* 3D View Toggle - Only for AlphaZero */}
-              {isAlphaZero && (
-                <button
-                  data-testid="3d-view-btn"
-                  onClick={() => setIs3DMode(true)}
-                  className="flex items-center justify-center gap-1 py-1.5 px-3 rounded transition-all text-xs"
-                  style={{ 
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: 'linear-gradient(135deg, rgba(191, 0, 255, 0.25) 0%, rgba(255, 0, 191, 0.2) 100%)',
-                    border: '1px solid rgba(191, 0, 255, 0.4)',
-                    color: '#bf00ff',
-                  }}
-                >
-                  <Box size={12} />
-                  3D
-                </button>
-              )}
               <button
                 data-testid="reset-btn"
                 onClick={resetGame}
@@ -807,52 +759,122 @@ const ChessGame2D = ({ enemy, playerColor, onGameEnd, onBack, isAlphaZero, onTog
 
         {/* Chess Board with Resize Handle */}
         <div className={`relative ${isMobile ? 'order-1' : ''}`} ref={boardContainerRef}>
-          {/* Board Container */}
-          <div 
-            className="chess-board-wrapper p-1.5 rounded-lg relative"
-            style={{
-              background: 'linear-gradient(180deg, rgba(25,25,40,0.85) 0%, rgba(15,15,25,0.9) 100%)',
-              boxShadow: `0 0 30px ${enemy?.color}20, 0 0 60px ${enemy?.color}08`,
-              border: `1px solid ${enemy?.color}25`,
-              backdropFilter: 'blur(8px)',
-              width: boardSize + 12,
-              height: boardSize + 12,
-            }}
-            data-testid="chess-board-container"
-          >
-            <Chessboard
-              options={{
-                id: "chess-board",
-                position: position,
-                onPieceDrop: onDrop,
-                canDragPiece: canDragPiece,
-                boardWidth: boardSize,
-                boardOrientation: playerColor,
-                boardStyle: {
-                  borderRadius: '6px',
-                  boxShadow: 'inset 0 0 15px rgba(0,0,0,0.4)'
-                },
-                squareStyles: customSquareStyles,
-                darkSquareStyle: { backgroundColor: '#4a5568' },
-                lightSquareStyle: { backgroundColor: '#a0aec0' },
-                animationDurationInMs: 180
-              }}
-            />
-            
-            {/* Resize Handle - Bottom Right Corner */}
-            <div
-              className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity"
-              style={{ 
-                background: `linear-gradient(135deg, transparent 50%, ${enemy?.color || '#ff0080'}60 50%)`,
-                borderBottomRightRadius: '6px'
-              }}
-              onMouseDown={handleResizeStart}
-              onTouchStart={handleResizeStart}
-              data-testid="resize-handle"
-            >
-              <Move size={10} className="text-white/50 rotate-45" style={{ marginTop: '4px', marginLeft: '4px' }} />
+          {/* 3D Mode Toggle - Only for Hidden Master */}
+          {isHiddenMaster && (
+            <div className="flex justify-center mb-2">
+              <button
+                onClick={() => setIs3DMode(!is3DMode)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all ${
+                  is3DMode 
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-500/30' 
+                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                }`}
+                style={{ fontFamily: 'Orbitron, sans-serif' }}
+                data-testid="3d-toggle-btn"
+              >
+                <Box size={14} />
+                {is3DMode ? '3D MODE ACTIVE' : 'ENABLE 3D MODE'}
+              </button>
             </div>
-          </div>
+          )}
+          
+          {/* Board Container - Conditional 3D or 2D */}
+          {is3DMode && isHiddenMaster ? (
+            // 3D CHESS BOARD - Sophisticated mode for Hidden Master
+            <div 
+              className="chess-board-wrapper p-1.5 rounded-lg relative"
+              style={{
+                background: 'linear-gradient(180deg, rgba(15,10,30,0.95) 0%, rgba(5,0,15,0.98) 100%)',
+                boxShadow: `0 0 40px ${enemy?.color}30, 0 0 80px #bf00ff20, inset 0 0 30px rgba(191, 0, 255, 0.1)`,
+                border: `2px solid ${enemy?.color}40`,
+                backdropFilter: 'blur(12px)',
+                width: boardSize + 12,
+                height: boardSize + 12,
+              }}
+              data-testid="chess-3d-board-container"
+            >
+              <Suspense fallback={
+                <div 
+                  className="flex items-center justify-center"
+                  style={{ width: boardSize, height: boardSize }}
+                >
+                  <div className="text-center">
+                    <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                    <span className="text-purple-400 text-xs" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      LOADING 3D BOARD...
+                    </span>
+                  </div>
+                </div>
+              }>
+                <Chess3DBoard
+                  position={position}
+                  playerColor={playerColor}
+                  boardSize={boardSize}
+                  lastMove={lastMove}
+                  game={gameRef.current}
+                  canMove={!isThinking && gameStatus === 'playing' && (
+                    (playerColor === 'white' && currentTurn === 'w') || 
+                    (playerColor === 'black' && currentTurn === 'b')
+                  )}
+                  onMove={({ sourceSquare, targetSquare }) => {
+                    // Create a synthetic piece drop event for 3D board
+                    return onDrop({ 
+                      piece: null, 
+                      sourceSquare, 
+                      targetSquare 
+                    });
+                  }}
+                />
+              </Suspense>
+            </div>
+          ) : (
+            // 2D CHESS BOARD - Standard mode
+            <div 
+              className="chess-board-wrapper p-1.5 rounded-lg relative"
+              style={{
+                background: 'linear-gradient(180deg, rgba(25,25,40,0.85) 0%, rgba(15,15,25,0.9) 100%)',
+                boxShadow: `0 0 30px ${enemy?.color}20, 0 0 60px ${enemy?.color}08`,
+                border: `1px solid ${enemy?.color}25`,
+                backdropFilter: 'blur(8px)',
+                width: boardSize + 12,
+                height: boardSize + 12,
+              }}
+              data-testid="chess-board-container"
+            >
+              <Chessboard
+                options={{
+                  id: "chess-board",
+                  position: position,
+                  onPieceDrop: onDrop,
+                  canDragPiece: canDragPiece,
+                  boardWidth: boardSize,
+                  boardOrientation: playerColor,
+                  boardStyle: {
+                    borderRadius: '6px',
+                    boxShadow: 'inset 0 0 15px rgba(0,0,0,0.4)'
+                  },
+                  squareStyles: customSquareStyles,
+                  darkSquareStyle: { backgroundColor: '#4a5568' },
+                  lightSquareStyle: { backgroundColor: '#a0aec0' },
+                  animationDurationInMs: 180
+                }}
+              />
+              
+              {/* Resize Handle - Bottom Right Corner */}
+              <div
+                className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity"
+                style={{ 
+                  background: `linear-gradient(135deg, transparent 50%, ${enemy?.color || '#ff0080'}60 50%)`,
+                  borderBottomRightRadius: '6px'
+                }}
+                onMouseDown={handleResizeStart}
+                onTouchStart={handleResizeStart}
+                data-testid="resize-handle"
+              >
+                <Move size={10} className="text-white/50 rotate-45" style={{ marginTop: '4px', marginLeft: '4px' }} />
+              </div>
+            </div>
+          )}
           
           {/* Size Controls */}
           <div className="flex justify-center gap-2 mt-2">
