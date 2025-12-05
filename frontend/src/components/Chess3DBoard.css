@@ -1,0 +1,557 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   ALPHAZERO 3D CHESS BOARD - Bird's Eye View Edition
+   Fighting Style • Neural Network Aesthetics • Rune Engravings
+   Sophisticated & Overwhelming Design - No Emojis, No Random Decorations
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Container */
+.chess-3d-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(ellipse at center,
+    rgba(30, 15, 50, 0.95) 0%,
+    rgba(15, 8, 30, 0.98) 50%,
+    rgba(5, 2, 15, 1) 100%);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Neural Network Ambient Background */
+.neural-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.3;
+}
+
+.neural-node {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle, #bf00ff 0%, transparent 70%);
+  border-radius: 50%;
+  animation: neural-pulse-3d 3s ease-in-out infinite;
+}
+
+.neural-node::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(191, 0, 255, 0.4) 0%, transparent 100%);
+  transform-origin: left center;
+  animation: neural-connect 4s ease-in-out infinite;
+}
+
+@keyframes neural-pulse-3d {
+  0%, 100% { 
+    opacity: 0.3;
+    transform: scale(1);
+    box-shadow: 0 0 5px rgba(191, 0, 255, 0.5);
+  }
+  50% { 
+    opacity: 0.8;
+    transform: scale(1.5);
+    box-shadow: 0 0 15px rgba(191, 0, 255, 0.8);
+  }
+}
+
+@keyframes neural-connect {
+  0%, 100% { opacity: 0.2; transform: rotate(0deg); }
+  25% { opacity: 0.5; transform: rotate(15deg); }
+  50% { opacity: 0.2; transform: rotate(-10deg); }
+  75% { opacity: 0.4; transform: rotate(5deg); }
+}
+
+/* Board Frame with Rune Engravings */
+.board-frame-3d {
+  position: relative;
+  padding: 35px;
+  background: linear-gradient(145deg,
+    rgba(40, 25, 65, 0.9) 0%,
+    rgba(25, 15, 45, 0.95) 50%,
+    rgba(15, 8, 30, 0.98) 100%);
+  border-radius: 12px;
+  border: 2px solid rgba(191, 0, 255, 0.3);
+  box-shadow:
+    0 0 30px rgba(191, 0, 255, 0.2),
+    0 0 60px rgba(100, 0, 180, 0.1),
+    inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Corner Runes */
+.frame-rune {
+  position: absolute;
+  font-size: 18px;
+  color: rgba(191, 0, 255, 0.7);
+  text-shadow: 0 0 10px rgba(191, 0, 255, 0.8);
+  animation: rune-glow-3d 3s ease-in-out infinite;
+  font-family: serif;
+  z-index: 5;
+}
+
+.corner-tl { top: 8px; left: 10px; }
+.corner-tr { top: 8px; right: 10px; }
+.corner-bl { bottom: 8px; left: 10px; }
+.corner-br { bottom: 8px; right: 10px; }
+
+@keyframes rune-glow-3d {
+  0%, 100% { 
+    opacity: 0.5;
+    text-shadow: 0 0 8px rgba(191, 0, 255, 0.6);
+  }
+  50% { 
+    opacity: 1;
+    text-shadow: 0 0 15px rgba(191, 0, 255, 1), 0 0 25px rgba(150, 0, 200, 0.5);
+  }
+}
+
+/* Edge Runes */
+.frame-edge-runes {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 28px;
+  z-index: 5;
+}
+
+.frame-edge-runes.top { top: 6px; }
+.frame-edge-runes.bottom { bottom: 6px; }
+
+.edge-rune {
+  font-size: 10px;
+  color: rgba(150, 100, 200, 0.5);
+  text-shadow: 0 0 5px rgba(150, 100, 200, 0.4);
+  animation: edge-rune-pulse 4s ease-in-out infinite;
+  font-family: serif;
+}
+
+.edge-rune:nth-child(odd) {
+  animation-delay: 0.5s;
+}
+
+@keyframes edge-rune-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+/* 3D Perspective Container - Bird's Eye View */
+.board-3d-perspective {
+  perspective: 1000px;
+  perspective-origin: 50% 50%;
+}
+
+/* 3D Board with subtle tilt */
+.board-3d {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: 320px;
+  height: 320px;
+  transform: rotateX(15deg) rotateZ(0deg);
+  transform-style: preserve-3d;
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(191, 0, 255, 0.15),
+    inset 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+/* Board surface ambient glow */
+.board-surface-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 30%,
+    rgba(191, 0, 255, 0.08) 0%,
+    transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Individual Squares */
+.square-3d {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  transform-style: preserve-3d;
+}
+
+/* Light Squares - Warm gold/cream with battle wear */
+.square-3d.light-square {
+  background: linear-gradient(135deg,
+    #c9b896 0%,
+    #b8a785 50%,
+    #a89675 100%);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark Squares - Deep purple/black battle-hardened */
+.square-3d.dark-square {
+  background: linear-gradient(135deg,
+    #4a3a6a 0%,
+    #3a2a5a 50%,
+    #2a1a4a 100%);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Square hover effect */
+.square-3d:hover {
+  filter: brightness(1.15);
+  z-index: 2;
+}
+
+.square-3d:hover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(191, 0, 255, 0.1);
+  pointer-events: none;
+}
+
+/* Selected square */
+.square-3d.selected {
+  box-shadow: 
+    inset 0 0 0 2px rgba(191, 0, 255, 0.8),
+    0 0 15px rgba(191, 0, 255, 0.5);
+}
+
+.selected-indicator {
+  position: absolute;
+  inset: 0;
+  background: rgba(191, 0, 255, 0.2);
+  animation: selected-pulse 1s ease-in-out infinite;
+}
+
+@keyframes selected-pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.4; }
+}
+
+/* Valid move indicator */
+.square-3d.valid-move::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle, 
+    rgba(0, 255, 136, 0.8) 0%,
+    rgba(0, 200, 100, 0.4) 50%,
+    transparent 70%);
+  border-radius: 50%;
+  z-index: 3;
+  animation: valid-move-pulse 1.2s ease-in-out infinite;
+}
+
+.valid-move-indicator {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 255, 136, 0.1);
+}
+
+@keyframes valid-move-pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% { 
+    transform: scale(1.3);
+    opacity: 0.5;
+  }
+}
+
+/* Last move highlight */
+.square-3d.last-move {
+  background: linear-gradient(135deg,
+    rgba(255, 204, 0, 0.4) 0%,
+    rgba(255, 180, 0, 0.3) 100%);
+}
+
+.square-3d.last-move.light-square {
+  background: linear-gradient(135deg,
+    #d4c896 0%,
+    #c8bc85 50%,
+    #bcb075 100%);
+}
+
+.square-3d.last-move.dark-square {
+  background: linear-gradient(135deg,
+    #5a4a7a 0%,
+    #4a3a6a 50%,
+    #3a2a5a 100%);
+}
+
+/* Drag over state */
+.square-3d.drag-over {
+  box-shadow: 
+    inset 0 0 0 3px rgba(191, 0, 255, 0.9),
+    0 0 20px rgba(191, 0, 255, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CHESS PIECES - Fighting Style SVG Pieces
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.piece-container-3d {
+  position: relative;
+  width: 85%;
+  height: 85%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  transition: transform 0.15s ease;
+  z-index: 5;
+}
+
+.piece-container-3d:hover {
+  transform: scale(1.1) translateY(-2px);
+}
+
+.piece-container-3d:active,
+.piece-container-3d.dragging {
+  cursor: grabbing;
+  transform: scale(1.15);
+  opacity: 0.8;
+}
+
+.chess-piece-3d {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
+  transition: filter 0.2s ease;
+}
+
+.piece-container-3d:hover .chess-piece-3d {
+  filter: 
+    drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6))
+    drop-shadow(0 0 8px rgba(191, 0, 255, 0.4));
+}
+
+/* White pieces styling */
+.white-piece {
+  filter: 
+    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 2px rgba(240, 215, 140, 0.3));
+}
+
+/* Black pieces styling */
+.black-piece {
+  filter: 
+    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6))
+    drop-shadow(0 0 3px rgba(150, 100, 200, 0.3));
+}
+
+/* Piece core glow (for kings and queens) */
+.piece-core-glow {
+  animation: core-glow 2s ease-in-out infinite;
+}
+
+@keyframes core-glow {
+  0%, 100% { 
+    opacity: 0.6;
+    filter: blur(0.5px);
+  }
+  50% { 
+    opacity: 1;
+    filter: blur(1px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COORDINATE LABELS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.file-labels-3d {
+  position: absolute;
+  bottom: 8px;
+  left: 35px;
+  right: 35px;
+  display: flex;
+  justify-content: space-around;
+}
+
+.rank-labels-3d {
+  position: absolute;
+  left: 12px;
+  top: 35px;
+  bottom: 35px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+}
+
+.coord-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  color: rgba(200, 150, 255, 0.6);
+  text-shadow: 0 0 5px rgba(150, 100, 200, 0.4);
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THINKING OVERLAY
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.thinking-overlay-3d {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 5, 20, 0.7);
+  backdrop-filter: blur(2px);
+  z-index: 20;
+  border-radius: 16px;
+}
+
+.thinking-neural {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 25px;
+  background: linear-gradient(135deg,
+    rgba(40, 20, 60, 0.95) 0%,
+    rgba(20, 10, 35, 0.98) 100%);
+  border: 1px solid rgba(191, 0, 255, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 0 30px rgba(191, 0, 255, 0.3);
+}
+
+.thinking-rune {
+  font-size: 20px;
+  color: rgba(255, 200, 100, 0.9);
+  text-shadow: 0 0 10px rgba(255, 200, 100, 0.8);
+  animation: thinking-rune-spin 2s linear infinite;
+}
+
+.thinking-rune:last-child {
+  animation-direction: reverse;
+}
+
+@keyframes thinking-rune-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.thinking-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 4px;
+  color: rgba(191, 0, 255, 0.9);
+  text-shadow: 0 0 10px rgba(191, 0, 255, 0.6);
+  animation: thinking-text-pulse 1s ease-in-out infinite;
+}
+
+@keyframes thinking-text-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE ADJUSTMENTS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .chess-3d-container {
+    padding: 12px;
+  }
+
+  .board-frame-3d {
+    padding: 25px;
+  }
+
+  .board-3d {
+    width: 280px;
+    height: 280px;
+  }
+
+  .square-3d {
+    width: 35px;
+    height: 35px;
+  }
+
+  .frame-rune {
+    font-size: 14px;
+  }
+
+  .edge-rune {
+    font-size: 8px;
+  }
+
+  .frame-edge-runes {
+    gap: 22px;
+  }
+
+  .coord-label {
+    font-size: 8px;
+  }
+
+  .file-labels-3d {
+    left: 25px;
+    right: 25px;
+  }
+
+  .rank-labels-3d {
+    left: 6px;
+    top: 25px;
+    bottom: 25px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BATTLE ATMOSPHERE EFFECTS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Subtle energy field around board */
+.board-frame-3d::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 16px;
+  background: linear-gradient(45deg,
+    transparent 40%,
+    rgba(191, 0, 255, 0.1) 50%,
+    transparent 60%);
+  background-size: 200% 200%;
+  animation: energy-sweep 4s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes energy-sweep {
+  0% { background-position: 200% 200%; }
+  100% { background-position: 0% 0%; }
+}
+
+/* Board edge glow effect */
+.board-3d::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 6px;
+  background: linear-gradient(135deg,
+    rgba(191, 0, 255, 0.3) 0%,
+    rgba(255, 204, 0, 0.1) 50%,
+    rgba(191, 0, 255, 0.3) 100%);
+  z-index: -1;
+  animation: board-edge-glow 3s ease-in-out infinite;
+}
+
+@keyframes board-edge-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
