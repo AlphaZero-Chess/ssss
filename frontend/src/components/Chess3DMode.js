@@ -4,11 +4,16 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 // CHESS 3D MODE - ALPHAZERO HIDDEN MASTER AESTHETIC
 // Highly sophisticated 3D chess board with rune-engraved chains,
 // complex magic seals, and the overwhelming AlphaZero visual signature
-// SEAL-STYLE CHAIN PLACEMENT - Matching HiddenMasterLock aesthetic
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Rune symbols matching the HiddenMasterLock seal
 const RUNES = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛇ', 'ᛈ', 'ᛉ', 'ᛋ', 'ᛏ', 'ᛒ', 'ᛖ', 'ᛗ', 'ᛚ', 'ᛜ', 'ᛞ', 'ᛟ'];
+
+// Advanced chess piece unicode with sophisticated styling
+const PIECE_SYMBOLS = {
+  'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
+  'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
+};
 
 // Files and ranks for board coordinates
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -39,98 +44,36 @@ const parseFEN = (fen) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TRUE 3D CHAIN LINK COMPONENT - Sophisticated seal-style design
+// SOPHISTICATED CHAIN COMPONENT - Matching HiddenMasterLock aesthetic
 // ═══════════════════════════════════════════════════════════════════════════════
-const ChainLink3D = ({ rune, delay, size = 'normal' }) => {
-  const sizeStyles = {
-    small: { width: 14, height: 10, fontSize: 6 },
-    normal: { width: 18, height: 13, fontSize: 7 },
-    large: { width: 22, height: 16, fontSize: 9 }
-  };
-  const s = sizeStyles[size] || sizeStyles.normal;
-  
-  return (
-    <div 
-      className="true-chain-link-3d"
-      style={{
-        width: s.width,
-        height: s.height,
-        animationDelay: `${delay}s`
-      }}
-    >
-      {/* 3D Chain torus effect */}
-      <div className="chain-torus-outer" />
-      <div className="chain-torus-inner" />
-      <div className="chain-torus-shine" />
-      <div className="chain-rune-container">
-        <span style={{ fontSize: s.fontSize }}>{rune}</span>
-      </div>
-      <div className="chain-electric-spark" />
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// SOPHISTICATED SEAL-STYLE CHAIN RING - Concentric pattern like HiddenMasterLock
-// ═══════════════════════════════════════════════════════════════════════════════
-const SealChainRing = ({ radius, linkCount, rotationSpeed, reverse, baseDelay = 0 }) => {
-  const chains = useMemo(() => {
-    return Array.from({ length: linkCount }, (_, i) => {
-      const angle = (i / linkCount) * 360;
-      return {
-        angle,
-        rune: RUNES[i % RUNES.length],
-        delay: baseDelay + i * 0.05
-      };
-    });
-  }, [linkCount, baseDelay]);
+const RuneChain = ({ position, rotation, count, type, delay = 0 }) => {
+  const links = useMemo(() => (
+    Array.from({ length: count }, (_, i) => ({
+      rune: RUNES[i % RUNES.length],
+      delay: i * 0.08 + delay
+    }))
+  ), [count, delay]);
 
   return (
     <div 
-      className="seal-chain-ring"
+      className="rune-chain-3d"
       style={{
-        width: radius * 2,
-        height: radius * 2,
-        animation: `seal-ring-rotate ${rotationSpeed}s linear infinite ${reverse ? 'reverse' : ''}`
-      }}
-    >
-      {chains.map((chain, i) => (
-        <div
-          key={i}
-          className="seal-chain-link-wrapper"
-          style={{
-            transform: `rotate(${chain.angle}deg) translateY(${-radius + 9}px)`
-          }}
-        >
-          <ChainLink3D rune={chain.rune} delay={chain.delay} size="small" />
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// SOPHISTICATED CROSS CHAIN - Seal binding pattern
-// ═══════════════════════════════════════════════════════════════════════════════
-const CrossChain = ({ length, direction, offset = 0 }) => {
-  const links = useMemo(() => {
-    return Array.from({ length }, (_, i) => ({
-      rune: RUNES[(i + offset) % RUNES.length],
-      delay: i * 0.06
-    }));
-  }, [length, offset]);
-
-  const isVertical = direction === 'vertical';
-  
-  return (
-    <div 
-      className="cross-chain-3d"
-      style={{
-        flexDirection: isVertical ? 'column' : 'row'
+        position: 'absolute',
+        ...position,
+        transform: rotation,
+        display: 'flex',
+        gap: '2px',
+        flexDirection: type === 'vertical' ? 'column' : 'row'
       }}
     >
       {links.map((link, i) => (
-        <ChainLink3D key={i} rune={link.rune} delay={link.delay} size="normal" />
+        <div 
+          key={i}
+          className="chain-link-3d"
+          style={{ animationDelay: `${link.delay}s` }}
+        >
+          <span className="chain-rune-3d">{link.rune}</span>
+        </div>
       ))}
     </div>
   );
@@ -189,153 +132,40 @@ const MagicSeal = ({ size, speed, reverse, opacity = 0.6 }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TRUE 3D CHESS PIECE - CSS-based 3D rendering (NOT emoji)
-// Sophisticated geometric shapes with depth, lighting, and materials
+// SOPHISTICATED 3D CHESS PIECE
 // ═══════════════════════════════════════════════════════════════════════════════
 const ChessPiece3D = ({ piece, square, isSelected, onClick, lastMove, playerColor }) => {
   if (!piece) return null;
   
   const isWhite = piece[0] === 'w';
-  const pieceType = piece[1]; // K, Q, R, B, N, P
+  const symbol = PIECE_SYMBOLS[piece];
   const isLastMoveSquare = lastMove && (lastMove.from === square || lastMove.to === square);
-  
-  // Get piece component based on type
-  const PieceGeometry = () => {
-    switch(pieceType) {
-      case 'K': return <KingPiece3D isWhite={isWhite} />;
-      case 'Q': return <QueenPiece3D isWhite={isWhite} />;
-      case 'R': return <RookPiece3D isWhite={isWhite} />;
-      case 'B': return <BishopPiece3D isWhite={isWhite} />;
-      case 'N': return <KnightPiece3D isWhite={isWhite} />;
-      case 'P': return <PawnPiece3D isWhite={isWhite} />;
-      default: return <PawnPiece3D isWhite={isWhite} />;
-    }
-  };
   
   return (
     <div 
-      className={`chess-piece-3d-true ${isSelected ? 'selected' : ''} ${isLastMoveSquare ? 'last-move' : ''}`}
+      className={`chess-piece-3d ${isSelected ? 'selected' : ''} ${isLastMoveSquare ? 'last-move' : ''}`}
       onClick={onClick}
       data-testid={`piece-${square}`}
     >
-      <div className="piece-shadow-3d" />
-      <div className={`piece-container-3d ${isWhite ? 'white-piece-3d' : 'black-piece-3d'}`}>
-        <PieceGeometry />
-      </div>
+      <div className="piece-glow" />
+      <div className="piece-base" />
+      <span 
+        className={`piece-symbol ${isWhite ? 'white-piece' : 'black-piece'}`}
+        style={{
+          textShadow: isWhite 
+            ? '0 0 15px rgba(255, 220, 180, 0.9), 0 0 30px rgba(255, 200, 150, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8)'
+            : '0 0 15px rgba(150, 100, 255, 0.9), 0 0 30px rgba(120, 80, 200, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8)'
+        }}
+      >
+        {symbol}
+      </span>
       {/* Rune engraving on piece base */}
-      <div className="piece-rune-engraving-3d">
+      <div className="piece-rune-engraving">
         {RUNES[(square.charCodeAt(0) + square.charCodeAt(1)) % RUNES.length]}
       </div>
-      {/* Selection aura */}
-      {isSelected && <div className="piece-selection-aura" />}
     </div>
   );
 };
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// INDIVIDUAL 3D PIECE COMPONENTS - True 3D appearance using CSS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// KING - The AlphaZero Seal - Supreme with cross
-const KingPiece3D = ({ isWhite }) => (
-  <div className="piece-3d king-3d">
-    {/* Base */}
-    <div className={`piece-base-cylinder ${isWhite ? 'white' : 'black'}`} />
-    {/* Body */}
-    <div className={`piece-body-tapered ${isWhite ? 'white' : 'black'}`} />
-    {/* Crown band */}
-    <div className="piece-crown-band" />
-    {/* THE CROSS - AlphaZero symbol */}
-    <div className="king-cross-vertical" />
-    <div className="king-cross-horizontal" />
-    <div className="king-cross-orb" />
-    {/* Glow aura */}
-    <div className="piece-glow-aura king-aura" />
-  </div>
-);
-
-// QUEEN - Neural Empress with crown spires
-const QueenPiece3D = ({ isWhite }) => (
-  <div className="piece-3d queen-3d">
-    {/* Base */}
-    <div className={`piece-base-cylinder ${isWhite ? 'white' : 'black'}`} />
-    {/* Body */}
-    <div className={`piece-body-elegant ${isWhite ? 'white' : 'black'}`} />
-    {/* Crown spires */}
-    <div className="queen-crown-container">
-      {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => (
-        <div key={angle} className="queen-spire" style={{ transform: `rotate(${angle}deg) translateY(-8px)` }} />
-      ))}
-    </div>
-    {/* Central orb */}
-    <div className="queen-central-orb" />
-    <div className="piece-glow-aura queen-aura" />
-  </div>
-);
-
-// ROOK - Monolithic Obelisk (NO tower)
-const RookPiece3D = ({ isWhite }) => (
-  <div className="piece-3d rook-3d">
-    {/* Base */}
-    <div className={`piece-base-cylinder wide ${isWhite ? 'white' : 'black'}`} />
-    {/* Monolith body */}
-    <div className={`piece-body-monolith ${isWhite ? 'white' : 'black'}`} />
-    {/* Cap */}
-    <div className={`piece-cap-flat ${isWhite ? 'white' : 'black'}`} />
-    {/* Octahedron crown */}
-    <div className="rook-octahedron" />
-    <div className="piece-glow-aura rook-aura" />
-  </div>
-);
-
-// BISHOP - Neural Spire with mitre
-const BishopPiece3D = ({ isWhite }) => (
-  <div className="piece-3d bishop-3d">
-    {/* Base */}
-    <div className={`piece-base-cylinder ${isWhite ? 'white' : 'black'}`} />
-    {/* Body */}
-    <div className={`piece-body-tapered ${isWhite ? 'white' : 'black'}`} />
-    {/* Mitre dome */}
-    <div className={`bishop-mitre ${isWhite ? 'white' : 'black'}`} />
-    {/* Spire */}
-    <div className="bishop-spire" />
-    {/* Tip orb */}
-    <div className="bishop-tip-orb" />
-    <div className="piece-glow-aura bishop-aura" />
-  </div>
-);
-
-// KNIGHT - Neural Algorithm Beast
-const KnightPiece3D = ({ isWhite }) => (
-  <div className="piece-3d knight-3d">
-    {/* Base */}
-    <div className={`piece-base-cylinder ${isWhite ? 'white' : 'black'}`} />
-    {/* Body stem */}
-    <div className={`knight-body-stem ${isWhite ? 'white' : 'black'}`} />
-    {/* Abstract head */}
-    <div className={`knight-head-abstract ${isWhite ? 'white' : 'black'}`} />
-    {/* Neural crest */}
-    <div className="knight-crest" />
-    {/* Eye sensor */}
-    <div className={`knight-eye ${isWhite ? 'cyan' : 'red'}`} />
-    <div className="piece-glow-aura knight-aura" />
-  </div>
-);
-
-// PAWN - Neural Node Sentinel
-const PawnPiece3D = ({ isWhite }) => (
-  <div className="piece-3d pawn-3d">
-    {/* Base */}
-    <div className={`piece-base-cylinder small ${isWhite ? 'white' : 'black'}`} />
-    {/* Stem */}
-    <div className={`pawn-stem ${isWhite ? 'white' : 'black'}`} />
-    {/* Sphere head */}
-    <div className={`pawn-sphere ${isWhite ? 'white' : 'black'}`} />
-    {/* Inner glow */}
-    <div className="pawn-inner-glow" />
-    <div className="piece-glow-aura pawn-aura" />
-  </div>
-);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN CHESS 3D MODE COMPONENT
@@ -449,63 +279,45 @@ const Chess3DMode = ({
       <MagicSeal size={boardSize * 1.4} speed={45} reverse={true} opacity={0.2} />
       <MagicSeal size={boardSize * 1.0} speed={30} reverse={false} opacity={0.25} />
 
-      {/* ═══ SOPHISTICATED SEAL-STYLE CHAIN SYSTEM ═══ */}
-      {/* Concentric chain rings - like HiddenMasterLock seal */}
-      <div className="seal-chain-system">
-        {/* Outer chain ring */}
-        <SealChainRing radius={boardSize * 0.65} linkCount={32} rotationSpeed={40} reverse={false} baseDelay={0} />
-        {/* Middle chain ring */}
-        <SealChainRing radius={boardSize * 0.52} linkCount={24} rotationSpeed={35} reverse={true} baseDelay={0.5} />
-        {/* Inner chain ring */}
-        <SealChainRing radius={boardSize * 0.40} linkCount={16} rotationSpeed={30} reverse={false} baseDelay={1} />
+      {/* Rune chains surrounding the board - basketball lines style wrapping */}
+      <div className="chains-wrapper-3d">
+        {/* Horizontal chains - top */}
+        <RuneChain position={{ top: 0, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={18} type="horizontal" delay={0} />
+        <RuneChain position={{ top: 20, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={16} type="horizontal" delay={0.2} />
         
-        {/* Cross chains - binding pattern */}
-        <div className="cross-chains-container">
-          {/* Horizontal cross chain */}
-          <div className="cross-chain-position horizontal">
-            <CrossChain length={14} direction="horizontal" offset={0} />
-          </div>
-          {/* Vertical cross chain */}
-          <div className="cross-chain-position vertical">
-            <CrossChain length={14} direction="vertical" offset={12} />
-          </div>
-          {/* Diagonal chains */}
-          <div className="cross-chain-position diagonal-1">
-            <CrossChain length={10} direction="horizontal" offset={4} />
-          </div>
-          <div className="cross-chain-position diagonal-2">
-            <CrossChain length={10} direction="horizontal" offset={8} />
-          </div>
-        </div>
+        {/* Horizontal chains - bottom */}
+        <RuneChain position={{ bottom: 0, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={18} type="horizontal" delay={0.4} />
+        <RuneChain position={{ bottom: 20, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={16} type="horizontal" delay={0.6} />
         
-        {/* Corner anchor chains */}
-        <div className="corner-anchor-chains">
-          <div className="corner-chain corner-tl">
-            {[0,1,2,3].map(i => <ChainLink3D key={i} rune={RUNES[i]} delay={i*0.1} size="normal" />)}
-          </div>
-          <div className="corner-chain corner-tr">
-            {[4,5,6,7].map(i => <ChainLink3D key={i} rune={RUNES[i]} delay={i*0.1} size="normal" />)}
-          </div>
-          <div className="corner-chain corner-bl">
-            {[8,9,10,11].map(i => <ChainLink3D key={i} rune={RUNES[i]} delay={i*0.1} size="normal" />)}
-          </div>
-          <div className="corner-chain corner-br">
-            {[12,13,14,15].map(i => <ChainLink3D key={i} rune={RUNES[i]} delay={i*0.1} size="normal" />)}
-          </div>
-        </div>
+        {/* Vertical chains - left */}
+        <RuneChain position={{ left: 0, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={16} type="vertical" delay={0.1} />
+        <RuneChain position={{ left: 20, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={14} type="vertical" delay={0.3} />
+        
+        {/* Vertical chains - right */}
+        <RuneChain position={{ right: 0, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={16} type="vertical" delay={0.5} />
+        <RuneChain position={{ right: 20, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={14} type="vertical" delay={0.7} />
+        
+        {/* Diagonal chains - wrapping corners like basketball court lines */}
+        <RuneChain position={{ top: -10, left: -10 }} rotation="rotate(45deg)" count={12} type="horizontal" delay={0.8} />
+        <RuneChain position={{ top: -10, right: -10 }} rotation="rotate(-45deg)" count={12} type="horizontal" delay={0.9} />
+        <RuneChain position={{ bottom: -10, left: -10 }} rotation="rotate(-45deg)" count={12} type="horizontal" delay={1.0} />
+        <RuneChain position={{ bottom: -10, right: -10 }} rotation="rotate(45deg)" count={12} type="horizontal" delay={1.1} />
+        
+        {/* Cross chains through center */}
+        <RuneChain position={{ top: '50%', left: -30, transform: 'translateY(-50%)' }} rotation="" count={20} type="horizontal" delay={1.2} />
+        <RuneChain position={{ left: '50%', top: -30, transform: 'translateX(-50%)' }} rotation="" count={20} type="vertical" delay={1.3} />
       </div>
 
       {/* Electric arcs effect */}
       <div className="electric-arcs-3d">
-        {Array.from({ length: 8 }, (_, i) => (
+        {Array.from({ length: 12 }, (_, i) => (
           <div 
             key={i}
             className="electric-arc-3d"
             style={{
-              left: `${15 + (i * 10)}%`,
-              top: `${20 + (i % 3) * 25}%`,
-              animationDelay: `${i * 0.2}s`,
-              transform: `rotate(${i * 45}deg)`
+              left: `${10 + (i * 8)}%`,
+              top: `${15 + (i % 4) * 20}%`,
+              animationDelay: `${i * 0.15}s`
             }}
           />
         ))}
@@ -725,224 +537,68 @@ const Chess3DMode = ({
           to { transform: translate(-50%, -50%) rotate(0deg); }
         }
 
-        @keyframes seal-ring-rotate {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
         @keyframes rune-glow-3d {
           0%, 100% { opacity: 0.6; }
           50% { opacity: 1; }
         }
 
-        /* ═══ SOPHISTICATED SEAL-STYLE CHAIN SYSTEM ═══ */
-        .seal-chain-system {
+        /* ═══ RUNE CHAINS ═══ */
+        .chains-wrapper-3d {
           position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
+          inset: -20px;
           pointer-events: none;
           z-index: 2;
         }
 
-        .seal-chain-ring {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          border-radius: 50%;
+        .rune-chain-3d {
+          pointer-events: none;
         }
 
-        .seal-chain-link-wrapper {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform-origin: center center;
-        }
-
-        /* TRUE 3D CHAIN LINK */
-        .true-chain-link-3d {
-          position: relative;
-          border-radius: 50%;
+        .chain-link-3d {
+          width: 16px;
+          height: 12px;
           background: linear-gradient(145deg, 
-            #5a3a8a 0%, 
-            #3a2a5a 25%,
-            #2a1a4a 50%, 
-            #1a0a3a 75%,
+            #4a2a7a 0%, 
+            #2a1a4a 40%, 
+            #1a0a3a 70%, 
             #3a2a5a 100%);
-          border: 2px solid #4a3a6a;
-          box-shadow: 
-            inset 0 2px 4px rgba(180, 130, 255, 0.4),
-            inset 0 -2px 4px rgba(0, 0, 0, 0.8),
-            0 0 8px rgba(150, 100, 255, 0.6),
-            0 0 15px rgba(100, 50, 200, 0.4),
-            0 2px 4px rgba(0, 0, 0, 0.6);
-          animation: chain-link-pulse 2s ease-in-out infinite;
-          transform-style: preserve-3d;
-        }
-
-        .chain-torus-outer {
-          position: absolute;
-          inset: -1px;
-          border-radius: 50%;
-          border: 2px solid rgba(150, 100, 255, 0.5);
-          background: transparent;
-        }
-
-        .chain-torus-inner {
-          position: absolute;
-          inset: 2px;
-          border-radius: 50%;
-          background: radial-gradient(ellipse at 30% 30%, 
-            rgba(100, 70, 150, 0.6) 0%,
-            rgba(40, 20, 80, 0.8) 50%,
-            rgba(20, 10, 40, 0.9) 100%);
-        }
-
-        .chain-torus-shine {
-          position: absolute;
-          top: 2px;
-          left: 20%;
-          width: 40%;
-          height: 30%;
-          background: linear-gradient(180deg, 
-            rgba(255, 255, 255, 0.3) 0%,
-            transparent 100%);
-          border-radius: 50%;
-        }
-
-        .chain-rune-container {
-          position: absolute;
-          inset: 0;
+          border: 2px solid #3a2a5a;
+          border-radius: 5px;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: rgba(220, 180, 255, 0.95);
-          text-shadow: 
-            0 0 4px rgba(200, 150, 255, 1),
-            0 0 8px rgba(150, 100, 255, 0.8);
-          font-family: serif;
+          box-shadow: 
+            inset 0 1px 3px rgba(150, 100, 255, 0.3),
+            inset 0 -1px 3px rgba(0, 0, 0, 0.7),
+            0 0 6px rgba(100, 50, 200, 0.5),
+            0 0 12px rgba(80, 0, 180, 0.3);
+          animation: chain-rattle-3d 0.4s ease-in-out infinite, chain-glow-3d 1.5s ease-in-out infinite;
         }
 
-        .chain-electric-spark {
-          position: absolute;
-          top: 50%;
-          right: -6px;
-          width: 8px;
-          height: 2px;
-          background: linear-gradient(90deg, 
-            rgba(200, 150, 255, 0.9) 0%, 
-            rgba(255, 220, 255, 1) 50%, 
-            transparent 100%);
-          transform: translateY(-50%);
-          animation: spark-flicker 0.4s ease-in-out infinite;
-          filter: blur(0.5px);
+        .chain-rune-3d {
+          font-size: 7px;
+          color: rgba(200, 150, 255, 0.9);
+          text-shadow: 0 0 4px rgba(150, 100, 255, 0.8);
         }
 
-        @keyframes chain-link-pulse {
+        @keyframes chain-rattle-3d {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(2deg); }
+          75% { transform: rotate(-2deg); }
+        }
+
+        @keyframes chain-glow-3d {
           0%, 100% { 
             box-shadow: 
-              inset 0 2px 4px rgba(180, 130, 255, 0.4),
-              inset 0 -2px 4px rgba(0, 0, 0, 0.8),
-              0 0 8px rgba(150, 100, 255, 0.6),
-              0 0 15px rgba(100, 50, 200, 0.4);
+              inset 0 1px 3px rgba(150, 100, 255, 0.3),
+              0 0 6px rgba(100, 50, 200, 0.5);
           }
           50% { 
             box-shadow: 
-              inset 0 2px 4px rgba(200, 150, 255, 0.6),
-              inset 0 -2px 4px rgba(0, 0, 0, 0.8),
-              0 0 15px rgba(180, 130, 255, 0.8),
-              0 0 25px rgba(130, 80, 230, 0.5),
-              0 0 35px rgba(100, 50, 200, 0.3);
+              inset 0 1px 3px rgba(150, 100, 255, 0.5),
+              0 0 12px rgba(120, 70, 220, 0.7),
+              0 0 20px rgba(100, 20, 200, 0.4);
           }
-        }
-
-        @keyframes spark-flicker {
-          0%, 100% { opacity: 0.2; transform: translateY(-50%) scaleX(0.5); }
-          25% { opacity: 1; transform: translateY(-50%) scaleX(1.3); }
-          50% { opacity: 0; }
-          75% { opacity: 0.7; transform: translateY(-50%) scaleX(1); }
-        }
-
-        /* Cross chains container */
-        .cross-chains-container {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 100%;
-          height: 100%;
-        }
-
-        .cross-chain-3d {
-          display: flex;
-          gap: 2px;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .cross-chain-position {
-          position: absolute;
-        }
-
-        .cross-chain-position.horizontal {
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-        }
-
-        .cross-chain-position.vertical {
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-        }
-
-        .cross-chain-position.diagonal-1 {
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%) rotate(45deg);
-        }
-
-        .cross-chain-position.diagonal-2 {
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%) rotate(-45deg);
-        }
-
-        /* Corner anchor chains */
-        .corner-anchor-chains {
-          position: absolute;
-          inset: -15px;
-        }
-
-        .corner-chain {
-          position: absolute;
-          display: flex;
-          gap: 2px;
-        }
-
-        .corner-chain.corner-tl {
-          top: 0;
-          left: 0;
-          transform: rotate(-45deg);
-        }
-
-        .corner-chain.corner-tr {
-          top: 0;
-          right: 0;
-          transform: rotate(45deg);
-        }
-
-        .corner-chain.corner-bl {
-          bottom: 0;
-          left: 0;
-          transform: rotate(45deg);
-        }
-
-        .corner-chain.corner-br {
-          bottom: 0;
-          right: 0;
-          transform: rotate(-45deg);
         }
 
         /* ═══ ELECTRIC ARCS ═══ */
@@ -1161,8 +817,8 @@ const Chess3DMode = ({
           50% { opacity: 0.8; }
         }
 
-        /* ═══ TRUE 3D CHESS PIECES ═══ */
-        .chess-piece-3d-true {
+        /* ═══ CHESS PIECES ═══ */
+        .chess-piece-3d {
           position: relative;
           display: flex;
           align-items: center;
@@ -1175,50 +831,69 @@ const Chess3DMode = ({
           z-index: 10;
         }
 
-        .chess-piece-3d-true:hover {
-          transform: translateZ(8px) scale(1.08);
+        .chess-piece-3d:hover {
+          transform: translateZ(8px) scale(1.1);
         }
 
-        .chess-piece-3d-true.selected {
-          transform: translateZ(12px) scale(1.12);
-          animation: piece-selected-glow-3d 1s ease-in-out infinite;
+        .chess-piece-3d.selected {
+          transform: translateZ(12px) scale(1.15);
+          animation: piece-selected-glow 1s ease-in-out infinite;
         }
 
-        .chess-piece-3d-true.last-move {
-          animation: last-move-highlight-3d 2s ease-in-out infinite;
+        .chess-piece-3d.last-move {
+          animation: last-move-highlight 2s ease-in-out infinite;
         }
 
-        @keyframes piece-selected-glow-3d {
+        @keyframes piece-selected-glow {
           0%, 100% { filter: drop-shadow(0 0 10px rgba(100, 255, 150, 0.8)); }
           50% { filter: drop-shadow(0 0 20px rgba(100, 255, 150, 1)); }
         }
 
-        @keyframes last-move-highlight-3d {
+        @keyframes last-move-highlight {
           0%, 100% { filter: drop-shadow(0 0 8px rgba(255, 255, 100, 0.6)); }
           50% { filter: drop-shadow(0 0 15px rgba(255, 255, 100, 0.9)); }
         }
 
-        .piece-shadow-3d {
+        .piece-glow {
+          position: absolute;
+          inset: -5px;
+          background: radial-gradient(circle, 
+            rgba(150, 100, 255, 0.3) 0%, 
+            transparent 70%);
+          border-radius: 50%;
+          pointer-events: none;
+        }
+
+        .piece-base {
           position: absolute;
           bottom: -2px;
           width: 70%;
-          height: 10px;
-          background: radial-gradient(ellipse, rgba(0,0,0,0.6) 0%, transparent 70%);
+          height: 8px;
+          background: linear-gradient(to bottom, 
+            rgba(50, 30, 80, 0.8) 0%, 
+            rgba(30, 15, 50, 0.9) 100%);
           border-radius: 50%;
           transform: translateZ(-5px) rotateX(80deg);
+          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
         }
 
-        .piece-container-3d {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transform-style: preserve-3d;
+        .piece-symbol {
+          font-size: 2.2em;
+          line-height: 1;
+          transition: all 0.2s ease;
         }
 
-        .piece-rune-engraving-3d {
+        .piece-symbol.white-piece {
+          color: #fff8e8;
+          filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+        }
+
+        .piece-symbol.black-piece {
+          color: #2a1a4a;
+          filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+        }
+
+        .piece-rune-engraving {
           position: absolute;
           bottom: 0;
           font-size: 8px;
@@ -1228,491 +903,8 @@ const Chess3DMode = ({
           transition: opacity 0.3s ease;
         }
 
-        .chess-piece-3d-true:hover .piece-rune-engraving-3d {
+        .chess-piece-3d:hover .piece-rune-engraving {
           opacity: 1;
-        }
-
-        .piece-selection-aura {
-          position: absolute;
-          inset: -10px;
-          border-radius: 50%;
-          background: radial-gradient(circle, 
-            rgba(100, 255, 150, 0.3) 0%, 
-            transparent 70%);
-          animation: aura-pulse-3d 1.5s ease-in-out infinite;
-        }
-
-        @keyframes aura-pulse-3d {
-          0%, 100% { transform: scale(1); opacity: 0.6; }
-          50% { transform: scale(1.2); opacity: 0.9; }
-        }
-
-        /* ═══ 3D PIECE GEOMETRIES ═══ */
-        .piece-3d {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-end;
-          transform-style: preserve-3d;
-        }
-
-        /* Base cylinder */
-        .piece-base-cylinder {
-          width: 65%;
-          height: 12%;
-          border-radius: 50%;
-          position: relative;
-          transform: translateY(2px);
-        }
-
-        .piece-base-cylinder.white {
-          background: linear-gradient(135deg, 
-            #f8f0ff 0%, 
-            #e8dff8 30%, 
-            #d0c0e8 60%, 
-            #e0d0f0 100%);
-          box-shadow: 
-            inset 0 2px 4px rgba(255, 255, 255, 0.8),
-            inset 0 -3px 6px rgba(100, 70, 150, 0.3),
-            0 3px 8px rgba(0, 0, 0, 0.5),
-            0 0 12px rgba(150, 100, 255, 0.3);
-        }
-
-        .piece-base-cylinder.black {
-          background: linear-gradient(135deg, 
-            #3a2a5a 0%, 
-            #2a1a4a 30%, 
-            #1a0a3a 60%, 
-            #2a1a4a 100%);
-          box-shadow: 
-            inset 0 2px 4px rgba(150, 100, 255, 0.3),
-            inset 0 -3px 6px rgba(0, 0, 0, 0.8),
-            0 3px 8px rgba(0, 0, 0, 0.7),
-            0 0 12px rgba(191, 0, 255, 0.4);
-        }
-
-        .piece-base-cylinder.wide {
-          width: 75%;
-        }
-
-        .piece-base-cylinder.small {
-          width: 55%;
-        }
-
-        /* Tapered body */
-        .piece-body-tapered {
-          width: 50%;
-          height: 40%;
-          position: absolute;
-          bottom: 12%;
-          clip-path: polygon(15% 100%, 85% 100%, 70% 0%, 30% 0%);
-        }
-
-        .piece-body-tapered.white {
-          background: linear-gradient(135deg, 
-            #f8f0ff 0%, 
-            #e8dff8 40%, 
-            #d8c8f0 100%);
-          box-shadow: 
-            inset 3px 0 6px rgba(255, 255, 255, 0.4),
-            inset -3px 0 6px rgba(100, 70, 150, 0.2);
-        }
-
-        .piece-body-tapered.black {
-          background: linear-gradient(135deg, 
-            #4a3a6a 0%, 
-            #2a1a4a 40%, 
-            #1a0a3a 100%);
-          box-shadow: 
-            inset 3px 0 6px rgba(150, 100, 255, 0.2),
-            inset -3px 0 6px rgba(0, 0, 0, 0.4);
-        }
-
-        /* Elegant body for queen */
-        .piece-body-elegant {
-          width: 50%;
-          height: 45%;
-          position: absolute;
-          bottom: 12%;
-          border-radius: 30% 30% 10% 10%;
-        }
-
-        .piece-body-elegant.white {
-          background: linear-gradient(135deg, 
-            #f8f0ff 0%, 
-            #e8dff8 40%, 
-            #d8c8f0 100%);
-        }
-
-        .piece-body-elegant.black {
-          background: linear-gradient(135deg, 
-            #4a3a6a 0%, 
-            #2a1a4a 40%, 
-            #1a0a3a 100%);
-        }
-
-        /* Monolith body for rook */
-        .piece-body-monolith {
-          width: 55%;
-          height: 50%;
-          position: absolute;
-          bottom: 12%;
-          border-radius: 8% 8% 0 0;
-        }
-
-        .piece-body-monolith.white {
-          background: linear-gradient(135deg, 
-            #f8f0ff 0%, 
-            #e8dff8 40%, 
-            #d8c8f0 100%);
-        }
-
-        .piece-body-monolith.black {
-          background: linear-gradient(135deg, 
-            #4a3a6a 0%, 
-            #2a1a4a 40%, 
-            #1a0a3a 100%);
-        }
-
-        /* Flat cap for rook */
-        .piece-cap-flat {
-          width: 60%;
-          height: 10%;
-          position: absolute;
-          top: 25%;
-          border-radius: 4px;
-        }
-
-        .piece-cap-flat.white {
-          background: linear-gradient(180deg, #f8f0ff, #e8dff8);
-        }
-
-        .piece-cap-flat.black {
-          background: linear-gradient(180deg, #4a3a6a, #2a1a4a);
-        }
-
-        /* Crown band */
-        .piece-crown-band {
-          width: 45%;
-          height: 8%;
-          position: absolute;
-          top: 28%;
-          border-radius: 50%;
-          background: linear-gradient(135deg, 
-            #ffcc00 0%, 
-            #ff9900 50%, 
-            #ffcc00 100%);
-          box-shadow: 
-            0 0 10px rgba(255, 200, 50, 0.8),
-            inset 0 1px 2px rgba(255, 255, 255, 0.6);
-        }
-
-        /* King cross */
-        .king-cross-vertical {
-          width: 8%;
-          height: 25%;
-          position: absolute;
-          top: 8%;
-          background: linear-gradient(180deg, 
-            #ffcc00 0%, 
-            #ffaa00 50%, 
-            #ffcc00 100%);
-          box-shadow: 
-            0 0 8px rgba(255, 200, 50, 0.9),
-            0 0 15px rgba(255, 180, 0, 0.5);
-          border-radius: 2px;
-        }
-
-        .king-cross-horizontal {
-          width: 22%;
-          height: 8%;
-          position: absolute;
-          top: 15%;
-          background: linear-gradient(90deg, 
-            #ffcc00 0%, 
-            #ffaa00 50%, 
-            #ffcc00 100%);
-          box-shadow: 
-            0 0 8px rgba(255, 200, 50, 0.9),
-            0 0 15px rgba(255, 180, 0, 0.5);
-          border-radius: 2px;
-        }
-
-        .king-cross-orb {
-          width: 12%;
-          height: 12%;
-          position: absolute;
-          top: 12%;
-          border-radius: 50%;
-          background: radial-gradient(circle at 30% 30%, 
-            #ffffff 0%, 
-            #ffee88 40%, 
-            #ffcc00 100%);
-          box-shadow: 
-            0 0 15px rgba(255, 255, 255, 0.9),
-            0 0 25px rgba(255, 200, 50, 0.7);
-        }
-
-        /* Queen crown */
-        .queen-crown-container {
-          position: absolute;
-          top: 15%;
-          width: 45%;
-          height: 20%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .queen-spire {
-          position: absolute;
-          width: 6%;
-          height: 80%;
-          background: linear-gradient(180deg, 
-            #ffcc00 0%, 
-            #ffaa00 100%);
-          border-radius: 2px 2px 0 0;
-          transform-origin: bottom center;
-          box-shadow: 0 0 6px rgba(255, 200, 50, 0.7);
-        }
-
-        .queen-central-orb {
-          width: 18%;
-          height: 18%;
-          position: absolute;
-          top: 8%;
-          border-radius: 50%;
-          background: radial-gradient(circle at 30% 30%, 
-            #ffee88 0%, 
-            #ffcc00 60%, 
-            #ff9900 100%);
-          box-shadow: 
-            0 0 12px rgba(255, 200, 50, 0.9),
-            0 0 20px rgba(255, 180, 0, 0.5);
-        }
-
-        /* Rook octahedron */
-        .rook-octahedron {
-          width: 16%;
-          height: 16%;
-          position: absolute;
-          top: 12%;
-          background: linear-gradient(135deg, 
-            #ffcc00 0%, 
-            #ff9900 100%);
-          transform: rotate(45deg);
-          box-shadow: 
-            0 0 10px rgba(255, 200, 50, 0.9),
-            inset 2px 2px 4px rgba(255, 255, 255, 0.4);
-        }
-
-        /* Bishop mitre */
-        .bishop-mitre {
-          width: 40%;
-          height: 25%;
-          position: absolute;
-          top: 25%;
-          border-radius: 50% 50% 0 0;
-        }
-
-        .bishop-mitre.white {
-          background: linear-gradient(180deg, #f8f0ff, #e8dff8);
-        }
-
-        .bishop-mitre.black {
-          background: linear-gradient(180deg, #4a3a6a, #2a1a4a);
-        }
-
-        .bishop-spire {
-          width: 6%;
-          height: 20%;
-          position: absolute;
-          top: 8%;
-          background: linear-gradient(180deg, 
-            #e8dff8 0%, 
-            #d0c0e8 100%);
-          clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-        }
-
-        .bishop-tip-orb {
-          width: 10%;
-          height: 10%;
-          position: absolute;
-          top: 5%;
-          border-radius: 50%;
-          background: radial-gradient(circle at 30% 30%, 
-            #ffee88 0%, 
-            #ffcc00 100%);
-          box-shadow: 0 0 8px rgba(255, 200, 50, 0.8);
-        }
-
-        /* Knight */
-        .knight-body-stem {
-          width: 45%;
-          height: 35%;
-          position: absolute;
-          bottom: 12%;
-          border-radius: 20%;
-        }
-
-        .knight-body-stem.white {
-          background: linear-gradient(135deg, #f8f0ff, #e8dff8);
-        }
-
-        .knight-body-stem.black {
-          background: linear-gradient(135deg, #4a3a6a, #2a1a4a);
-        }
-
-        .knight-head-abstract {
-          width: 40%;
-          height: 30%;
-          position: absolute;
-          top: 20%;
-          transform: rotate(20deg);
-          border-radius: 30% 70% 30% 10%;
-        }
-
-        .knight-head-abstract.white {
-          background: linear-gradient(135deg, #f8f0ff, #e8dff8);
-        }
-
-        .knight-head-abstract.black {
-          background: linear-gradient(135deg, #4a3a6a, #2a1a4a);
-        }
-
-        .knight-crest {
-          width: 15%;
-          height: 20%;
-          position: absolute;
-          top: 12%;
-          left: 55%;
-          transform: rotate(-10deg);
-          clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-          background: linear-gradient(180deg, #d0c0e8, #b0a0d0);
-        }
-
-        .knight-eye {
-          width: 12%;
-          height: 12%;
-          position: absolute;
-          top: 28%;
-          left: 35%;
-          border-radius: 50%;
-          box-shadow: 
-            0 0 10px currentColor,
-            0 0 20px currentColor;
-        }
-
-        .knight-eye.cyan {
-          background: radial-gradient(circle, #00ffff, #0088aa);
-          color: #00ffff;
-        }
-
-        .knight-eye.red {
-          background: radial-gradient(circle, #ff4444, #aa0000);
-          color: #ff0040;
-        }
-
-        /* Pawn */
-        .pawn-stem {
-          width: 35%;
-          height: 30%;
-          position: absolute;
-          bottom: 12%;
-          border-radius: 20% 20% 0 0;
-        }
-
-        .pawn-stem.white {
-          background: linear-gradient(135deg, #f8f0ff, #e8dff8);
-        }
-
-        .pawn-stem.black {
-          background: linear-gradient(135deg, #4a3a6a, #2a1a4a);
-        }
-
-        .pawn-sphere {
-          width: 38%;
-          height: 38%;
-          position: absolute;
-          top: 18%;
-          border-radius: 50%;
-        }
-
-        .pawn-sphere.white {
-          background: radial-gradient(circle at 30% 30%, 
-            #ffffff 0%, 
-            #f8f0ff 30%, 
-            #e8dff8 60%, 
-            #d8c8f0 100%);
-          box-shadow: 
-            inset 3px 3px 8px rgba(255, 255, 255, 0.8),
-            inset -2px -2px 6px rgba(100, 70, 150, 0.2),
-            0 0 15px rgba(150, 100, 255, 0.3);
-        }
-
-        .pawn-sphere.black {
-          background: radial-gradient(circle at 30% 30%, 
-            #5a4a7a 0%, 
-            #3a2a5a 30%, 
-            #2a1a4a 60%, 
-            #1a0a3a 100%);
-          box-shadow: 
-            inset 3px 3px 8px rgba(150, 100, 255, 0.3),
-            inset -2px -2px 6px rgba(0, 0, 0, 0.5),
-            0 0 15px rgba(191, 0, 255, 0.4);
-        }
-
-        .pawn-inner-glow {
-          width: 20%;
-          height: 20%;
-          position: absolute;
-          top: 27%;
-          border-radius: 50%;
-          background: radial-gradient(circle, 
-            rgba(255, 200, 255, 0.8) 0%, 
-            transparent 70%);
-          animation: inner-glow-pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes inner-glow-pulse {
-          0%, 100% { opacity: 0.5; transform: scale(1); }
-          50% { opacity: 0.9; transform: scale(1.2); }
-        }
-
-        /* Piece glow auras */
-        .piece-glow-aura {
-          position: absolute;
-          inset: -5px;
-          border-radius: 50%;
-          pointer-events: none;
-          opacity: 0.4;
-        }
-
-        .king-aura {
-          background: radial-gradient(circle, rgba(255, 200, 50, 0.4) 0%, transparent 70%);
-        }
-
-        .queen-aura {
-          background: radial-gradient(circle, rgba(255, 180, 100, 0.3) 0%, transparent 70%);
-        }
-
-        .rook-aura {
-          background: radial-gradient(circle, rgba(150, 100, 255, 0.3) 0%, transparent 70%);
-        }
-
-        .bishop-aura {
-          background: radial-gradient(circle, rgba(200, 150, 255, 0.3) 0%, transparent 70%);
-        }
-
-        .knight-aura {
-          background: radial-gradient(circle, rgba(100, 200, 255, 0.3) 0%, transparent 70%);
-        }
-
-        .pawn-aura {
-          background: radial-gradient(circle, rgba(180, 150, 220, 0.25) 0%, transparent 70%);
         }
 
         /* ═══ BOARD COORDINATES ═══ */
