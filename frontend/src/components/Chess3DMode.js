@@ -153,7 +153,7 @@ const ChessPiece3D = ({ piece, square, isSelected, onClick, lastMove, playerColo
       data-testid={`piece-${square}`}
     >
       <div className="piece-glow" />
-      <div className="piece-base" />
+      {/* piece-base div removed to fix the shadow/ellipse bug under pieces */}
       <span 
         className={`piece-symbol ${isWhite ? 'white-piece' : 'black-piece'}`}
         style={{
