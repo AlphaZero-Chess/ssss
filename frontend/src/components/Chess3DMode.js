@@ -279,34 +279,24 @@ const Chess3DMode = ({
       <MagicSeal size={boardSize * 1.4} speed={45} reverse={true} opacity={0.2} />
       <MagicSeal size={boardSize * 1.0} speed={30} reverse={false} opacity={0.25} />
 
-      {/* Rune chains surrounding the board - basketball lines style wrapping */}
+      {/* Rune chains - HIDDEN (can be re-enabled by uncommenting)
       <div className="chains-wrapper-3d">
-        {/* Horizontal chains - top */}
         <RuneChain position={{ top: 0, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={18} type="horizontal" delay={0} />
         <RuneChain position={{ top: 20, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={16} type="horizontal" delay={0.2} />
-        
-        {/* Horizontal chains - bottom */}
         <RuneChain position={{ bottom: 0, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={18} type="horizontal" delay={0.4} />
         <RuneChain position={{ bottom: 20, left: '50%', transform: 'translateX(-50%)' }} rotation="" count={16} type="horizontal" delay={0.6} />
-        
-        {/* Vertical chains - left */}
         <RuneChain position={{ left: 0, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={16} type="vertical" delay={0.1} />
         <RuneChain position={{ left: 20, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={14} type="vertical" delay={0.3} />
-        
-        {/* Vertical chains - right */}
         <RuneChain position={{ right: 0, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={16} type="vertical" delay={0.5} />
         <RuneChain position={{ right: 20, top: '50%', transform: 'translateY(-50%)' }} rotation="" count={14} type="vertical" delay={0.7} />
-        
-        {/* Diagonal chains - wrapping corners like basketball court lines */}
         <RuneChain position={{ top: -10, left: -10 }} rotation="rotate(45deg)" count={12} type="horizontal" delay={0.8} />
         <RuneChain position={{ top: -10, right: -10 }} rotation="rotate(-45deg)" count={12} type="horizontal" delay={0.9} />
         <RuneChain position={{ bottom: -10, left: -10 }} rotation="rotate(-45deg)" count={12} type="horizontal" delay={1.0} />
         <RuneChain position={{ bottom: -10, right: -10 }} rotation="rotate(45deg)" count={12} type="horizontal" delay={1.1} />
-        
-        {/* Cross chains through center */}
         <RuneChain position={{ top: '50%', left: -30, transform: 'translateY(-50%)' }} rotation="" count={20} type="horizontal" delay={1.2} />
         <RuneChain position={{ left: '50%', top: -30, transform: 'translateX(-50%)' }} rotation="" count={20} type="vertical" delay={1.3} />
       </div>
+      */}
 
       {/* Electric arcs effect */}
       <div className="electric-arcs-3d">
