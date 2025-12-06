@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AmongUsEasterEgg from './AmongUsEasterEgg';
+// Achievements integration - MODULAR, can be removed without breaking the component
+import { useAchievementsContext } from '../context/AchievementsContext';
 
 // Secret code: Type "ALPHA" to unlock the hidden master
 const SECRET_CODE = ['a', 'l', 'p', 'h', 'a'];
@@ -9,6 +11,9 @@ const STORAGE_KEY = 'hiddenMasterUnlocked';
 const RUNES = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛇ', 'ᛈ', 'ᛉ', 'ᛋ', 'ᛏ', 'ᛒ', 'ᛖ', 'ᛗ', 'ᛚ', 'ᛜ', 'ᛞ', 'ᛟ'];
 
 const HiddenMasterLock = ({ children, onUnlock }) => {
+  // Achievements context - BACKWARD COMPATIBLE (returns no-op if not available)
+  const { onHiddenMasterUnlocked } = useAchievementsContext();
+  
   // Initialize state based on localStorage
   const [isLocked, setIsLocked] = useState(() => {
     const unlocked = localStorage.getItem(STORAGE_KEY);
@@ -59,8 +64,10 @@ const HiddenMasterLock = ({ children, onUnlock }) => {
       setIsUnlocking(false);
       localStorage.setItem(STORAGE_KEY, 'true');
       if (onUnlock) onUnlock();
+      // Trigger achievement for breaking the seal
+      onHiddenMasterUnlocked();
     }, 3500);
-  }, [onUnlock]);
+  }, [onUnlock, onHiddenMasterUnlocked]);
 
   // Handle mobile input change (must be after triggerUnlock)
   const handleMobileInputChange = useCallback((e) => {

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AlphaZeroKeyboard from './AlphaZeroKeyboard';
+// Achievements integration - MODULAR, can be removed without breaking the component
+import { useAchievementsContext } from '../context/AchievementsContext';
 
 /**
  * AmongUsEasterEgg - A draggable Among Us character that unlocks mobile keyboard
@@ -19,6 +21,11 @@ const SHAKE_COUNT_THRESHOLD = 5; // Number of shakes needed
 const SHAKE_TIMEOUT = 500; // Time window for shake detection (ms)
 
 const AmongUsEasterEgg = ({ onUnlockKeyboard, onSecretEntered }) => {
+  // Achievements context - BACKWARD COMPATIBLE (returns no-op if not available)
+  const { onCrewmateFound, onLaptopDropped, onKeyboardUsed } = useAchievementsContext();
+  
+  // Track if achievements have been triggered
+  const achievementsTriggeredRef = useRef({ crewmate: false, laptop: false, keyboard: false });
   // State for the crewmate
   const [crewmatePosition, setCrewmatePosition] = useState({ x: -40, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
@@ -117,17 +124,29 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard, onSecretEntered }) => {
     setLaptopDropped(true);
     setLaptopPosition({ x: x + 30, y: y + 60 });
     
+    // Trigger laptop dropped achievement
+    if (!achievementsTriggeredRef.current.laptop) {
+      achievementsTriggeredRef.current.laptop = true;
+      onLaptopDropped();
+    }
+    
     // Hide crewmate after dropping laptop
     setTimeout(() => {
       setIsVisible(false);
     }, 500);
-  }, []);
+  }, [onLaptopDropped]);
 
   // Handle touch/mouse start
   const handleDragStart = useCallback((e) => {
     e.preventDefault();
     setIsDragging(true);
     setIsPeeking(false);
+    
+    // Trigger crewmate found achievement
+    if (!achievementsTriggeredRef.current.crewmate) {
+      achievementsTriggeredRef.current.crewmate = true;
+      onCrewmateFound();
+    }
     
     const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
@@ -138,7 +157,7 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard, onSecretEntered }) => {
     };
     
     lastPositionsRef.current = [{ x: clientX, y: clientY, time: Date.now() }];
-  }, [crewmatePosition]);
+  }, [crewmatePosition, onCrewmateFound]);
 
   // Handle touch/mouse move
   const handleDragMove = useCallback((e) => {
@@ -217,6 +236,12 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard, onSecretEntered }) => {
     setShowCustomKeyboard(false);
     setKeyboardUnlocked(true);
     
+    // Trigger keyboard used achievement
+    if (!achievementsTriggeredRef.current.keyboard) {
+      achievementsTriggeredRef.current.keyboard = true;
+      onKeyboardUsed();
+    }
+    
     // Call the external callbacks
     if (onUnlockKeyboard) {
       onUnlockKeyboard();
@@ -224,7 +249,7 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard, onSecretEntered }) => {
     if (onSecretEntered) {
       onSecretEntered();
     }
-  }, [onUnlockKeyboard, onSecretEntered]);
+  }, [onUnlockKeyboard, onSecretEntered, onKeyboardUsed]);
   
   // Handle keyboard close without entering secret
   const handleKeyboardClose = useCallback(() => {
