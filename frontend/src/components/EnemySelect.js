@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Crown, Flame, Star, Sparkles } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
 import HiddenMasterLock from './HiddenMasterLock';
-import { AchievementsButton, AchievementsPanel } from './AchievementsDisplay';
 
 const enemies = [
   {
@@ -82,7 +81,6 @@ const EnemySelect = ({ onSelect }) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [showAchievements, setShowAchievements] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
@@ -97,14 +95,6 @@ const EnemySelect = ({ onSelect }) => {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-3 sm:p-4 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%)' }}>
-      {/* Achievements Button - Top Right */}
-      <div className={`fixed top-4 right-4 z-20 transition-all duration-700 ${isReady ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'}`}>
-        <AchievementsButton onClick={() => setShowAchievements(true)} />
-      </div>
-      
-      {/* Achievements Panel */}
-      <AchievementsPanel isOpen={showAchievements} onClose={() => setShowAchievements(false)} />
-      
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
         <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900" style={{ minHeight: '100vh', minWidth: '100vw' }} />

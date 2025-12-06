@@ -407,22 +407,17 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   // Handle game over
   const handleGameOver = useCallback((game) => {
     let result;
-    let isStalemate = false;
-    
     if (game.isCheckmate()) {
       const loser = game.turn();
       const playerWon = (playerColor === 'white' && loser === 'b') || 
                         (playerColor === 'black' && loser === 'w');
       result = playerWon ? 'player' : 'enemy';
-    } else if (game.isStalemate()) {
-      result = 'draw';
-      isStalemate = true;
-    } else if (game.isDraw()) {
+    } else if (game.isDraw() || game.isStalemate()) {
       result = 'draw';
     }
     
     setGameStatus('ended');
-    setTimeout(() => onGameEnd(result, isStalemate), 1500);
+    setTimeout(() => onGameEnd(result), 1500);
   }, [playerColor, onGameEnd]);
 
   // Check if a piece is draggable - only allow player's pieces on player's turn
