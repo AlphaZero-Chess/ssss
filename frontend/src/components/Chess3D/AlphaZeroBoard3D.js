@@ -783,6 +783,7 @@ const AlphaZeroBoard3DScene = ({
             position={piece.position}
             isSelected={selectedSquare === piece.square}
             isHovered={false}
+            playerColor={playerColor}
             onClick={(e) => {
               e.stopPropagation();
               onPieceClick?.(piece.square);

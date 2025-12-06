@@ -1108,7 +1108,7 @@ export const King3D = ({ position, color, isSelected, isHovered, onClick }) => {
 };
 
 // ==================== PIECE FACTORY ====================
-export const AlphaZeroPiece3D = ({ type, color, position, isSelected, isHovered, onClick }) => {
+export const AlphaZeroPiece3D = ({ type, color, position, isSelected, isHovered, onClick, playerColor }) => {
   const pieceComponents = {
     p: Pawn3D,
     r: Rook3D,
@@ -1122,14 +1122,20 @@ export const AlphaZeroPiece3D = ({ type, color, position, isSelected, isHovered,
   
   if (!PieceComponent) return null;
   
+  // When playing as Black, the board rotates 180°, so pieces need to counter-rotate
+  // to face the player correctly
+  const pieceRotation = playerColor === 'black' ? [0, Math.PI, 0] : [0, 0, 0];
+  
   return (
-    <PieceComponent
-      position={position}
-      color={color}
-      isSelected={isSelected}
-      isHovered={isHovered}
-      onClick={onClick}
-    />
+    <group rotation={pieceRotation}>
+      <PieceComponent
+        position={position}
+        color={color}
+        isSelected={isSelected}
+        isHovered={isHovered}
+        onClick={onClick}
+      />
+    </group>
   );
 };
 

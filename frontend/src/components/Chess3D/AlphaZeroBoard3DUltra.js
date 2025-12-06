@@ -3,12 +3,15 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 // ==================== LIGHTWEIGHT PIECE COMPONENT ====================
-const ChessPiece3D = memo(({ type, color, position, isSelected }) => {
+const ChessPiece3D = memo(({ type, color, position, isSelected, playerColor }) => {
   const meshRef = useRef();
   const isWhite = color === 'white';
   const baseColor = isWhite ? '#e8e0f8' : '#1a0828';
   const emissiveColor = isWhite ? '#6040a0' : '#bf00ff';
   const goldAccent = '#ffcc00';
+  
+  // When playing as Black, pieces need to counter-rotate to face the player
+  const pieceRotation = playerColor === 'black' ? [0, Math.PI, 0] : [0, 0, 0];
   
   // Minimal animation - only selected pieces
   useFrame((state) => {
@@ -183,14 +186,16 @@ const ChessPiece3D = memo(({ type, color, position, isSelected }) => {
   };
   
   return (
-    <group ref={meshRef} position={position}>
-      {getPieceGeometry()}
-      {isSelected && (
-        <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.35, 0.45, 24]} />
-          <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={1.5} transparent opacity={0.8} side={THREE.DoubleSide} />
-        </mesh>
-      )}
+    <group rotation={pieceRotation}>
+      <group ref={meshRef} position={position}>
+        {getPieceGeometry()}
+        {isSelected && (
+          <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.35, 0.45, 24]} />
+            <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={1.5} transparent opacity={0.8} side={THREE.DoubleSide} />
+          </mesh>
+        )}
+      </group>
     </group>
   );
 });
@@ -435,6 +440,7 @@ const AlphaZeroBoard3DUltra = memo(({
           color={piece.color}
           position={piece.position}
           isSelected={selectedSquare === piece.square}
+          playerColor={playerColor}
         />
       ))}
       

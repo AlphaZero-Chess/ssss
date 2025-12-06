@@ -398,6 +398,7 @@ const AlphaZeroBoard3DSceneOptimized = ({
             color={piece.color}
             position={piece.position}
             isSelected={selectedSquare === piece.square}
+            playerColor={playerColor}
             onClick={(e) => {
               e.stopPropagation();
               onPieceClick?.(piece.square);
