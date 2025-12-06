@@ -811,10 +811,13 @@ export const useAchievements = () => {
       
       updateStatistics(updates);
       
-      // Check victory achievements
+      // Check victory achievements - use computed values with proper fallbacks
+      const newTotalWins = updates.totalWins !== undefined ? updates.totalWins : currentStats.totalWins + 1;
+      const newWinStreak = updates.currentWinStreak !== undefined ? updates.currentWinStreak : currentStats.currentWinStreak + 1;
+      
       setTimeout(() => {
-        checkVictoryAchievements(updates.totalWins || currentStats.totalWins + 1, enemyId);
-        checkStreakAchievements(updates.currentWinStreak);
+        checkVictoryAchievements(newTotalWins, enemyId);
+        checkStreakAchievements(newWinStreak);
         checkSpecialWinAchievements(piecesLost, moveCount);
         checkMasteryAchievements(updates);
       }, 100);
@@ -862,11 +865,13 @@ export const useAchievements = () => {
       }, 100);
     }
     
-    // Check all enemies played
+    // Check all enemies played - must include current enemyId
     const allEnemies = ['elegant', 'nonelegant', 'minia0', 'alphazero'];
     const playedEnemies = updates.enemiesPlayed || currentStats.enemiesPlayed;
-    if (allEnemies.every(e => playedEnemies.includes(e))) {
-      unlockAchievement('enemy_collector');
+    // Ensure current enemy is included in the check
+    const allPlayedEnemies = playedEnemies.includes(enemyId) ? playedEnemies : [...playedEnemies, enemyId];
+    if (allEnemies.every(e => allPlayedEnemies.includes(e))) {
+      setTimeout(() => unlockAchievement('enemy_collector'), 150);
     }
   }, [updateStatistics, unlockAchievement]);
   

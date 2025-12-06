@@ -53,16 +53,14 @@ function AppContent() {
   }, []);
 
   const handleGameEnd = useCallback((result, gameMoveCount = 0, gamePiecesLost = 0) => {
-    setWinner(result);
+    setWinner(result === 'stalemate' ? 'draw' : result); // UI shows 'draw' for stalemate
     setMoveCount(gameMoveCount);
     setPiecesLost(gamePiecesLost);
     setGameState("victory");
     
-    // Record game result for achievements
+    // Record game result for achievements - pass exact result type including 'stalemate'
     if (selectedEnemy) {
-      // Handle stalemate vs regular draw
-      const resultType = result === 'draw' && gameMoveCount > 0 ? 'draw' : result;
-      recordGameResult(resultType, selectedEnemy.id, gameMoveCount, gamePiecesLost);
+      recordGameResult(result, selectedEnemy.id, gameMoveCount, gamePiecesLost);
     }
   }, [selectedEnemy, recordGameResult]);
 

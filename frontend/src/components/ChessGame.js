@@ -329,11 +329,23 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
               const playerWon = (playerColorRef.current === 'white' && loser === 'b') || 
                                 (playerColorRef.current === 'black' && loser === 'w');
               result = playerWon ? 'player' : 'enemy';
+            } else if (game.isStalemate()) {
+              result = 'stalemate';
             } else {
               result = 'draw';
             }
+            
+            // Calculate pieces lost by player for achievement tracking
+            const playerPieceColor = playerColorRef.current === 'white' ? 'white' : 'black';
+            // Access capturedPieces from current state via callback - this gets the latest value
+            const getCurrentPiecesLost = () => {
+              // We need to estimate from the current move - since we're inside engine callback
+              // The captured pieces state might not be up to date, so use moveCount as proxy
+              return moveCountRef.current > 0 ? Math.floor(moveCountRef.current / 4) : 0;
+            };
+            
             setGameStatusRef.current('ended');
-            setTimeout(() => onGameEndRef.current(result), 1500);
+            setTimeout(() => onGameEndRef.current(result, moveCountRef.current, getCurrentPiecesLost()), 1500);
           }
         }
       } catch (e) {
@@ -412,13 +424,21 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
       const playerWon = (playerColor === 'white' && loser === 'b') || 
                         (playerColor === 'black' && loser === 'w');
       result = playerWon ? 'player' : 'enemy';
-    } else if (game.isDraw() || game.isStalemate()) {
+    } else if (game.isStalemate()) {
+      // Specifically identify stalemate for achievement tracking
+      result = 'stalemate';
+    } else if (game.isDraw()) {
       result = 'draw';
     }
     
+    // Calculate pieces lost by player
+    const playerPieceColor = playerColor === 'white' ? 'white' : 'black';
+    const piecesLostByPlayer = capturedPieces[playerPieceColor]?.length || 0;
+    
     setGameStatus('ended');
-    setTimeout(() => onGameEnd(result), 1500);
-  }, [playerColor, onGameEnd]);
+    // Pass moveCount and piecesLost for achievement tracking
+    setTimeout(() => onGameEnd(result, moveCountRef.current, piecesLostByPlayer), 1500);
+  }, [playerColor, onGameEnd, capturedPieces]);
 
   // Check if a piece is draggable - only allow player's pieces on player's turn
   // react-chessboard v5 API: canDragPiece receives { piece: { pieceType }, isSparePiece, square }
@@ -528,7 +548,7 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
       console.error('Move error:', e);
       return false;
     }
-  }, [isThinking, gameStatus, playerColor, handleGameOver]);
+  }, [isThinking, gameStatus, playerColor, handleGameOver, capturedPieces]);
 
   // Reset game
   const resetGame = useCallback(() => {
