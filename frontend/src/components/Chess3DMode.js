@@ -133,13 +133,18 @@ const MagicSeal = ({ size, speed, reverse, opacity = 0.6 }) => {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SOPHISTICATED 3D CHESS PIECE
+// Counter-rotation applied to keep pieces upright when board is rotated
 // ═══════════════════════════════════════════════════════════════════════════════
-const ChessPiece3D = ({ piece, square, isSelected, onClick, lastMove, playerColor }) => {
+const ChessPiece3D = ({ piece, square, isSelected, onClick, lastMove, playerColor, boardRotationZ = 0 }) => {
   if (!piece) return null;
   
   const isWhite = piece[0] === 'w';
   const symbol = PIECE_SYMBOLS[piece];
   const isLastMoveSquare = lastMove && (lastMove.from === square || lastMove.to === square);
+  
+  // Counter-rotate the piece symbol to keep it upright when board is rotated
+  // This fixes the "crown on ground" bug for both white and black pieces
+  const counterRotation = -boardRotationZ;
   
   return (
     <div 
@@ -154,13 +159,15 @@ const ChessPiece3D = ({ piece, square, isSelected, onClick, lastMove, playerColo
         style={{
           textShadow: isWhite 
             ? '0 0 15px rgba(255, 220, 180, 0.9), 0 0 30px rgba(255, 200, 150, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8)'
-            : '0 0 15px rgba(150, 100, 255, 0.9), 0 0 30px rgba(120, 80, 200, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8)'
+            : '0 0 15px rgba(150, 100, 255, 0.9), 0 0 30px rgba(120, 80, 200, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8)',
+          transform: `rotateZ(${counterRotation}deg)`,
+          display: 'inline-block'
         }}
       >
         {symbol}
       </span>
       {/* Rune engraving on piece base */}
-      <div className="piece-rune-engraving">
+      <div className="piece-rune-engraving" style={{ transform: `rotateZ(${counterRotation}deg)` }}>
         {RUNES[(square.charCodeAt(0) + square.charCodeAt(1)) % RUNES.length]}
       </div>
     </div>
@@ -375,6 +382,7 @@ const Chess3DMode = ({
                   onClick={() => onSquareClick && onSquareClick(square)}
                   lastMove={lastMove}
                   playerColor={playerColor}
+                  boardRotationZ={rotationZ}
                 />
               )}
             </div>
