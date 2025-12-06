@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AlphaZeroKeyboard from './AlphaZeroKeyboard';
+import { recordEasterEggFound, triggerAchievementNotification } from '../utils/AchievementsManager';
 
 /**
  * AmongUsEasterEgg - A draggable Among Us character that unlocks mobile keyboard
@@ -117,6 +118,12 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard, onSecretEntered }) => {
     setLaptopDropped(true);
     setLaptopPosition({ x: x + 30, y: y + 60 });
     
+    // Record achievement for finding easter egg
+    const achievement = recordEasterEggFound('among_us');
+    if (achievement) {
+      triggerAchievementNotification(achievement);
+    }
+    
     // Hide crewmate after dropping laptop
     setTimeout(() => {
       setIsVisible(false);
@@ -204,6 +211,12 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard, onSecretEntered }) => {
     
     if (!laptopOpen) {
       setLaptopOpen(true);
+      
+      // Record achievement for opening laptop
+      const achievement = recordEasterEggFound('laptop');
+      if (achievement) {
+        triggerAchievementNotification(achievement);
+      }
       
       // After laptop opens, show the custom AlphaZero keyboard
       setTimeout(() => {

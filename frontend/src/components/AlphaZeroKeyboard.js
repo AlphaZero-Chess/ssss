@@ -162,9 +162,9 @@ const AlphaZeroKeyboard = ({ onSecretEntered, onClose, isVisible = true }) => {
                   <button
                     key={key}
                     className={`keyboard-key ${isPressed ? 'pressed' : ''} ${isHighlighted ? 'highlighted' : ''} ${isBackspace ? 'backspace' : ''}`}
-                    onClick={() => handleKeyPress(key)}
-                    onTouchStart={(e) => {
+                    onPointerDown={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       handleKeyPress(key);
                     }}
                     data-testid={`key-${key === '⌫' ? 'backspace' : key}`}
@@ -183,9 +183,9 @@ const AlphaZeroKeyboard = ({ onSecretEntered, onClose, isVisible = true }) => {
         <div className="keyboard-actions">
           <button 
             className="action-btn clear-btn"
-            onClick={handleClear}
-            onTouchStart={(e) => {
+            onPointerDown={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               handleClear();
             }}
             data-testid="clear-btn"
@@ -194,9 +194,9 @@ const AlphaZeroKeyboard = ({ onSecretEntered, onClose, isVisible = true }) => {
           </button>
           <button 
             className="action-btn close-btn"
-            onClick={onClose}
-            onTouchStart={(e) => {
+            onPointerDown={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               if (onClose) onClose();
             }}
             data-testid="close-keyboard-btn"
@@ -286,6 +286,8 @@ const AlphaZeroKeyboard = ({ onSecretEntered, onClose, isVisible = true }) => {
           transform: translateY(0);
           animation: slide-up-keyboard 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
           overflow: hidden;
+          touch-action: manipulation;
+          -webkit-touch-callout: none;
         }
 
         @keyframes slide-up-keyboard {
@@ -458,12 +460,16 @@ const AlphaZeroKeyboard = ({ onSecretEntered, onClose, isVisible = true }) => {
           flex-direction: column;
           gap: 6px;
           margin-bottom: 12px;
+          touch-action: manipulation;
+          pointer-events: auto;
         }
 
         .keyboard-row {
           display: flex;
           justify-content: center;
           gap: 4px;
+          touch-action: manipulation;
+          pointer-events: auto;
         }
 
         .keyboard-key {
@@ -481,6 +487,9 @@ const AlphaZeroKeyboard = ({ onSecretEntered, onClose, isVisible = true }) => {
           overflow: hidden;
           -webkit-tap-highlight-color: transparent;
           touch-action: manipulation;
+          user-select: none;
+          -webkit-user-select: none;
+          pointer-events: auto;
         }
 
         .keyboard-key:active,
@@ -562,6 +571,9 @@ const AlphaZeroKeyboard = ({ onSecretEntered, onClose, isVisible = true }) => {
           transition: all 0.2s ease;
           -webkit-tap-highlight-color: transparent;
           touch-action: manipulation;
+          user-select: none;
+          -webkit-user-select: none;
+          pointer-events: auto;
         }
 
         .clear-btn {

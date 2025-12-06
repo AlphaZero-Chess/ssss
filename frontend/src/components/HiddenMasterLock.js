@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AmongUsEasterEgg from './AmongUsEasterEgg';
+import { recordHiddenMasterUnlock, triggerAchievementNotification } from '../utils/AchievementsManager';
 
 // Secret code: Type "ALPHA" to unlock the hidden master
 const SECRET_CODE = ['a', 'l', 'p', 'h', 'a'];
@@ -52,6 +53,12 @@ const HiddenMasterLock = ({ children, onUnlock }) => {
   // Trigger unlock function
   const triggerUnlock = useCallback(() => {
     setIsUnlocking(true);
+    
+    // Record achievement for unlocking hidden master
+    const achievement = recordHiddenMasterUnlock();
+    if (achievement) {
+      triggerAchievementNotification(achievement);
+    }
     
     // After animation completes, set unlocked state
     setTimeout(() => {

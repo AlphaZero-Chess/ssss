@@ -5,6 +5,8 @@ import EnemySelect from "./components/EnemySelect";
 import ColorSelect from "./components/ColorSelect";
 import ChessGame from "./components/ChessGame";
 import VictoryScreen from "./components/VictoryScreen";
+import { AchievementNotificationProvider } from "./components/AchievementsDisplay";
+import { recordGameResult, triggerAchievementNotification } from "./utils/AchievementsManager";
 
 function App() {
   const [gameState, setGameState] = useState("enemy-select"); // enemy-select, color-select, playing, victory
@@ -22,9 +24,18 @@ function App() {
     setGameState("playing");
   };
 
-  const handleGameEnd = (result) => {
+  const handleGameEnd = (result, isStalemate = false) => {
     setWinner(result);
     setGameState("victory");
+    
+    // Record achievement - pass enemy id and stalemate flag
+    if (selectedEnemy) {
+      const newAchievements = recordGameResult(result, selectedEnemy.id, isStalemate);
+      // Trigger notifications for each new achievement
+      newAchievements.forEach(achievement => {
+        triggerAchievementNotification(achievement);
+      });
+    }
   };
 
   const handleRestart = () => {
@@ -42,46 +53,48 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <div className="game-container">
-                {gameState === "enemy-select" && (
-                  <EnemySelect onSelect={handleEnemySelect} />
-                )}
-                {gameState === "color-select" && (
-                  <ColorSelect
-                    enemy={selectedEnemy}
-                    onSelect={handleColorSelect}
-                    onBack={() => setGameState("enemy-select")}
-                  />
-                )}
-                {gameState === "playing" && (
-                  <ChessGame
-                    enemy={selectedEnemy}
-                    playerColor={playerColor}
-                    onGameEnd={handleGameEnd}
-                    onBack={() => setGameState("color-select")}
-                  />
-                )}
-                {gameState === "victory" && (
-                  <VictoryScreen
-                    winner={winner}
-                    enemy={selectedEnemy}
-                    playerColor={playerColor}
-                    onPlayAgain={handlePlayAgain}
-                    onNewEnemy={handleRestart}
-                  />
-                )}
-              </div>
-            }
-          />
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <AchievementNotificationProvider>
+      <div className="App">
+        <BrowserRouter>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <div className="game-container">
+                  {gameState === "enemy-select" && (
+                    <EnemySelect onSelect={handleEnemySelect} />
+                  )}
+                  {gameState === "color-select" && (
+                    <ColorSelect
+                      enemy={selectedEnemy}
+                      onSelect={handleColorSelect}
+                      onBack={() => setGameState("enemy-select")}
+                    />
+                  )}
+                  {gameState === "playing" && (
+                    <ChessGame
+                      enemy={selectedEnemy}
+                      playerColor={playerColor}
+                      onGameEnd={handleGameEnd}
+                      onBack={() => setGameState("color-select")}
+                    />
+                  )}
+                  {gameState === "victory" && (
+                    <VictoryScreen
+                      winner={winner}
+                      enemy={selectedEnemy}
+                      playerColor={playerColor}
+                      onPlayAgain={handlePlayAgain}
+                      onNewEnemy={handleRestart}
+                    />
+                  )}
+                </div>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+      </div>
+    </AchievementNotificationProvider>
   );
 }
 
