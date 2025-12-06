@@ -14,6 +14,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
  * Or with image:
  * <SneakyEyeTracker size="large" glowColor="#bf00ff" useImage />
  * 
+ * Or with alpha symbol (for enemy select screen):
+ * <SneakyEyeTracker size="large" glowColor="#bf00ff" useImage useAlpha />
+ * 
  * Props:
  * - size: 'small' | 'large' - determines the eye size and tracking intensity
  * - glowColor: string - the glow color for the eye
@@ -21,6 +24,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
  * - style: object - additional inline styles
  * - enableTracking: boolean - enables/disables tracking (default: true)
  * - useImage: boolean - use eye-icon.png instead of emoji (default: true)
+ * - useAlpha: boolean - use Greek alpha 'α' instead of eye image (default: false)
  * - children: the eye emoji to display (fallback if useImage is false)
  */
 const SneakyEyeTracker = ({ 
@@ -30,7 +34,8 @@ const SneakyEyeTracker = ({
   className = '',
   style = {},
   enableTracking = true,
-  useImage = true
+  useImage = true,
+  useAlpha = false
 }) => {
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const eyeRef = useRef(null);
@@ -166,16 +171,31 @@ const SneakyEyeTracker = ({
       }}
     >
       {useImage ? (
-        <img 
-          src="/eye-icon.png" 
-          alt="Eye" 
-          width={imageDimensions.width}
-          height={imageDimensions.height}
-          style={{ 
-            display: 'inline-block',
-            verticalAlign: 'middle'
-          }}
-        />
+        useAlpha ? (
+          <span 
+            style={{ 
+              display: 'inline-block',
+              verticalAlign: 'middle',
+              fontSize: size === 'large' ? '80px' : '30px',
+              lineHeight: 1,
+              fontWeight: 'bold',
+              color: glowColor || '#bf00ff'
+            }}
+          >
+            α
+          </span>
+        ) : (
+          <img 
+            src="/eye-icon.png" 
+            alt="Eye" 
+            width={imageDimensions.width}
+            height={imageDimensions.height}
+            style={{ 
+              display: 'inline-block',
+              verticalAlign: 'middle'
+            }}
+          />
+        )
       ) : (
         children
       )}

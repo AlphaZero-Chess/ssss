@@ -420,7 +420,10 @@ const HiddenMasterLock = ({ children, onUnlock }) => {
       
       {/* Among Us Easter Egg - Only shows on mobile when keyboard not yet unlocked */}
       {isMobile && !mobileKeyboardEnabled && !isUnlocking && isLocked && (
-        <AmongUsEasterEgg onUnlockKeyboard={handleMobileKeyboardUnlock} />
+        <AmongUsEasterEgg 
+          onUnlockKeyboard={handleMobileKeyboardUnlock}
+          onSecretEntered={triggerUnlock}
+        />
       )}
       
       {/* Mobile keyboard input styles */}

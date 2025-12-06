@@ -677,14 +677,18 @@ function ChessScene({
         />
       ))}
       
-      {/* Camera controls */}
+      {/* Camera controls - allows bird's eye view and touch support */}
       <OrbitControls
         enablePan={false}
         minDistance={8}
-        maxDistance={20}
-        minPolarAngle={Math.PI / 6}
+        maxDistance={25}
+        minPolarAngle={0}
         maxPolarAngle={Math.PI / 2.5}
         target={[0, 0, 0]}
+        touches={{
+          ONE: 1,
+          TWO: 2
+        }}
       />
     </>
   );
@@ -1049,11 +1053,11 @@ const ChessGame3D = ({ enemy, playerColor, onGameEnd, onBack }) => {
       style={{ background: 'linear-gradient(135deg, #0a0515 0%, #1a0a3a 50%, #0a0515 100%)' }}
       data-testid="chess-game-3d-container"
     >
-      {/* 3D Canvas */}
+      {/* 3D Canvas - Bird's eye view starting position */}
       <div className="absolute inset-0">
         <Canvas
           shadows
-          camera={{ position: [0, 12, 12], fov: 50 }}
+          camera={{ position: [0, 22, 0.1], fov: 50 }}
           gl={{ antialias: true }}
         >
           <Suspense fallback={null}>

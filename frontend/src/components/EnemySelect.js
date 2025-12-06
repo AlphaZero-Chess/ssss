@@ -249,6 +249,7 @@ const EnemySelect = ({ onSelect }) => {
                       size="large"
                       glowColor={enemy.color}
                       useImage={true}
+                      useAlpha={true}
                       style={{
                         transform: isHovered ? 'scale(1.15)' : 'scale(1)'
                       }}

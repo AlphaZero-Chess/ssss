@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Box } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
 import Chess3DMode from './Chess3DMode';
 
@@ -164,7 +164,8 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [currentTurn, setCurrentTurn] = useState('w');
   const [isInCheck, setIsInCheck] = useState(false);
-  const [is3DMode, setIs3DMode] = useState(false);
+  // 3D mode is automatic for AlphaZero - no manual toggle
+  const [is3DMode, setIs3DMode] = useState(enemy?.id === 'alphazero');
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
   const stockfishRef = useRef(null);
@@ -629,12 +630,7 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
     }
   }, [isThinking, gameStatus, playerColor, selectedSquare, legalMoves, handleGameOver]);
 
-  // Toggle 3D mode
-  const toggle3DMode = useCallback(() => {
-    setIs3DMode(prev => !prev);
-    setSelectedSquare(null);
-    setLegalMoves([]);
-  }, []);
+  // 3D mode is automatic for AlphaZero - no toggle needed
 
   // Resign
   const handleResign = () => {
@@ -837,31 +833,7 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
               </button>
             </div>
             
-            {/* 3D Mode Toggle - Only for AlphaZero Hidden Master */}
-            {isAlphaZero && (
-              <div className="mt-3 pt-3 border-t border-white/10">
-                <button
-                  data-testid="toggle-3d-btn"
-                  onClick={toggle3DMode}
-                  className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all text-xs ${
-                    is3DMode 
-                      ? 'bg-gradient-to-r from-purple-600/40 to-pink-600/40 border border-purple-500/50' 
-                      : 'bg-white/10 hover:bg-white/20 border border-white/10'
-                  }`}
-                  style={{ fontFamily: 'Orbitron, sans-serif' }}
-                >
-                  <Box size={14} className={is3DMode ? 'text-purple-300' : 'text-gray-400'} />
-                  <span className={is3DMode ? 'text-purple-200' : 'text-gray-300'}>
-                    {is3DMode ? '3D MODE ACTIVE' : 'ENABLE 3D MODE'}
-                  </span>
-                </button>
-                {is3DMode && (
-                  <p className="text-center text-xs mt-1.5 text-purple-400/60" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                    Click squares to move • Right-drag to rotate
-                  </p>
-                )}
-              </div>
-            )}
+            {/* 3D Mode is now automatic for AlphaZero - toggle removed */}
           </div>
         </div>
 

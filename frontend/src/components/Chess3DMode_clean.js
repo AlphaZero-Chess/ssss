@@ -300,13 +300,31 @@ const Chess3DMode = ({
           ))}
         </div>
 
-        {/* Board coordinates */}
+        {/* Board coordinates - counter-rotated to always face camera */}
         <div className="board-coordinates-3d">
           {FILES.map((f, i) => (
-            <span key={f} className="coord-file" style={{ left: i * squareSize + squareSize / 2 }}>{f}</span>
+            <span 
+              key={f} 
+              className="coord-file" 
+              style={{ 
+                left: i * squareSize + squareSize / 2,
+                transform: `translateX(-50%) rotateZ(${-rotationZ}deg)`
+              }}
+            >
+              {f}
+            </span>
           ))}
           {RANKS.map((r, i) => (
-            <span key={r} className="coord-rank" style={{ top: i * squareSize + squareSize / 2 }}>{r}</span>
+            <span 
+              key={r} 
+              className="coord-rank" 
+              style={{ 
+                top: i * squareSize + squareSize / 2,
+                transform: `translateY(-50%) rotateZ(${-rotationZ}deg)`
+              }}
+            >
+              {r}
+            </span>
           ))}
         </div>
       </div>
@@ -718,24 +736,27 @@ const Chess3DMode = ({
           position: absolute;
           inset: 0;
           pointer-events: none;
+          transform-style: preserve-3d;
         }
 
         .coord-file {
           position: absolute;
           bottom: -20px;
-          transform: translateX(-50%);
           font-family: 'Orbitron', sans-serif;
           font-size: 10px;
           color: rgba(191, 0, 255, 0.5);
+          display: inline-block;
+          transform-origin: center center;
         }
 
         .coord-rank {
           position: absolute;
           left: -18px;
-          transform: translateY(-50%);
           font-family: 'Orbitron', sans-serif;
           font-size: 10px;
           color: rgba(191, 0, 255, 0.5);
+          display: inline-block;
+          transform-origin: center center;
         }
 
         /* ═══ THINKING INDICATOR ═══ */

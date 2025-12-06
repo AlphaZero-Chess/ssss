@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import AlphaZeroKeyboard from './AlphaZeroKeyboard';
 
 /**
  * AmongUsEasterEgg - A draggable Among Us character that unlocks mobile keyboard
@@ -7,7 +8,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
  * - Red crewmate peeks from edge of screen
  * - Can be dragged around
  * - Shake the character to drop a laptop
- * - Tap the laptop to open it and unlock mobile keyboard
+ * - Tap the laptop to open custom AlphaZero keyboard
  * 
  * This component is designed to be mobile-aware and non-breaking.
  * It only shows on mobile/touch devices.
@@ -17,7 +18,7 @@ const SHAKE_THRESHOLD = 15; // Minimum shake intensity to trigger laptop drop
 const SHAKE_COUNT_THRESHOLD = 5; // Number of shakes needed
 const SHAKE_TIMEOUT = 500; // Time window for shake detection (ms)
 
-const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
+const AmongUsEasterEgg = ({ onUnlockKeyboard, onSecretEntered }) => {
   // State for the crewmate
   const [crewmatePosition, setCrewmatePosition] = useState({ x: -40, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
@@ -33,6 +34,9 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
   const [laptopPosition, setLaptopPosition] = useState({ x: 0, y: 0 });
   const [laptopOpen, setLaptopOpen] = useState(false);
   const [keyboardUnlocked, setKeyboardUnlocked] = useState(false);
+  
+  // State for custom AlphaZero keyboard
+  const [showCustomKeyboard, setShowCustomKeyboard] = useState(false);
   
   // State for mobile detection
   const [isMobile, setIsMobile] = useState(false);
@@ -201,15 +205,31 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
     if (!laptopOpen) {
       setLaptopOpen(true);
       
-      // After laptop opens, unlock keyboard
+      // After laptop opens, show the custom AlphaZero keyboard
       setTimeout(() => {
-        setKeyboardUnlocked(true);
-        if (onUnlockKeyboard) {
-          onUnlockKeyboard();
-        }
-      }, 1000);
+        setShowCustomKeyboard(true);
+      }, 800);
     }
-  }, [laptopOpen, onUnlockKeyboard]);
+  }, [laptopOpen]);
+  
+  // Handle secret entered from custom keyboard
+  const handleSecretEntered = useCallback(() => {
+    setShowCustomKeyboard(false);
+    setKeyboardUnlocked(true);
+    
+    // Call the external callbacks
+    if (onUnlockKeyboard) {
+      onUnlockKeyboard();
+    }
+    if (onSecretEntered) {
+      onSecretEntered();
+    }
+  }, [onUnlockKeyboard, onSecretEntered]);
+  
+  // Handle keyboard close without entering secret
+  const handleKeyboardClose = useCallback(() => {
+    setShowCustomKeyboard(false);
+  }, []);
 
   // Add global event listeners for drag
   useEffect(() => {
@@ -337,7 +357,7 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
                     </div>
                   </div>
                   <div className="unlock-message">
-                    KEYBOARD UNLOCKED!
+                    {showCustomKeyboard ? 'ENTERING CODE...' : 'TAP FOR KEYBOARD'}
                   </div>
                 </div>
               )}
@@ -530,6 +550,15 @@ const AmongUsEasterEgg = ({ onUnlockKeyboard }) => {
           50% { opacity: 1; }
         }
       `}</style>
+      
+      {/* Custom AlphaZero Keyboard */}
+      {showCustomKeyboard && (
+        <AlphaZeroKeyboard
+          isVisible={showCustomKeyboard}
+          onSecretEntered={handleSecretEntered}
+          onClose={handleKeyboardClose}
+        />
+      )}
     </>
   );
 };

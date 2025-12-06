@@ -67,7 +67,7 @@ const Chess3DScene = memo(function Chess3DScene({ position, lastMove, playerColo
     <>
       <PerspectiveCamera
         makeDefault
-        position={playerColor === 'white' ? [0, 14, 16] : [0, 14, -16]}
+        position={playerColor === 'white' ? [0, 28, 0.1] : [0, 28, -0.1]}
         fov={45}
       />
       <OrbitControls
@@ -77,11 +77,15 @@ const Chess3DScene = memo(function Chess3DScene({ position, lastMove, playerColo
         enableRotate={true}
         minDistance={12}
         maxDistance={35}
-        minPolarAngle={Math.PI / 6}
+        minPolarAngle={0}
         maxPolarAngle={Math.PI / 2.3}
         target={[0, 0, 0]}
         rotateSpeed={0.4}
         zoomSpeed={0.8}
+        touches={{
+          ONE: 1,
+          TWO: 2
+        }}
       />
       
       {/* Fog for depth */}
