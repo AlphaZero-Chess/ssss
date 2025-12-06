@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Flag, Zap, Maximize2, Minimize2, Move, Box } from 'lucide-react';
 import SneakyEyeTracker from './SneakyEyeTracker';
-
-// Lazy load 3D board for Hidden Master only - keeps bundle optimized
-const Chess3DBoard = lazy(() => import('./Chess3DBoard'));
+import Chess3DMode from './Chess3DMode';
 
 // ═══════════════════════════════════════════════════════════════════════
 // PERSONALITY IMPORTS - External personality files
@@ -166,12 +164,18 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [currentTurn, setCurrentTurn] = useState('w');
   const [isInCheck, setIsInCheck] = useState(false);
+  const [is3DMode, setIs3DMode] = useState(false);
+  const [selectedSquare, setSelectedSquare] = useState(null);
+  const [legalMoves, setLegalMoves] = useState([]);
   const stockfishRef = useRef(null);
   const isEngineReady = useRef(false);
   const boardContainerRef = useRef(null);
   const resizeStartRef = useRef({ x: 0, y: 0, size: 0 });
   const moveCountRef = useRef(0);
   const hasInitializedEngineMove = useRef(false);
+  
+  // Check if this is the AlphaZero Hidden Master
+  const isAlphaZero = enemy?.id === 'alphazero';
   
   // Refs for state setters to use in callbacks (avoid stale closures)
   const setPositionRef = useRef(setPosition);
@@ -539,6 +543,8 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
     setLastMove(null);
     setCapturedPieces({ white: [], black: [] });
     setIsThinking(false);
+    setSelectedSquare(null);
+    setLegalMoves([]);
     
     if (playerColor === 'black') {
       hasInitializedEngineMove.current = true; // Set flag before calling
@@ -549,6 +555,86 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
       }, 600);
     }
   }, [playerColor]);
+
+  // 3D Mode square click handler
+  const handle3DSquareClick = useCallback((square) => {
+    if (isThinking || gameStatus !== 'playing') return;
+    
+    const game = gameRef.current;
+    const turn = game.turn();
+    const isPlayerTurnNow = (playerColor === 'white' && turn === 'w') || 
+                           (playerColor === 'black' && turn === 'b');
+    
+    if (!isPlayerTurnNow) return;
+    
+    const piece = game.get(square);
+    const playerPieceColor = playerColor === 'white' ? 'w' : 'b';
+    
+    // If clicking on own piece, select it and show legal moves
+    if (piece && piece.color === playerPieceColor) {
+      setSelectedSquare(square);
+      const moves = game.moves({ square, verbose: true });
+      setLegalMoves(moves.map(m => m.to));
+      return;
+    }
+    
+    // If a piece is selected and clicking on a legal move target, make the move
+    if (selectedSquare && legalMoves.includes(square)) {
+      try {
+        const moveResult = game.move({
+          from: selectedSquare,
+          to: square,
+          promotion: 'q'
+        });
+        
+        if (moveResult) {
+          moveCountRef.current++;
+          const newFen = game.fen();
+          
+          setPosition(newFen);
+          setCurrentTurn(game.turn());
+          setIsInCheck(game.isCheck() && !game.isCheckmate());
+          setMoveHistory(prev => [...prev, moveResult.san]);
+          setLastMove({ from: selectedSquare, to: square });
+          setSelectedSquare(null);
+          setLegalMoves([]);
+          
+          if (moveResult.captured) {
+            const capturedColor = moveResult.color === 'w' ? 'black' : 'white';
+            setCapturedPieces(prev => ({
+              ...prev,
+              [capturedColor]: [...prev[capturedColor], moveResult.captured]
+            }));
+          }
+          
+          if (game.isGameOver()) {
+            handleGameOver(game);
+            return;
+          }
+          
+          // Trigger engine to make its move
+          setTimeout(() => {
+            if (stockfishRef.current?.makeEngineMove) {
+              stockfishRef.current.makeEngineMove();
+            }
+          }, 300);
+        }
+      } catch (e) {
+        console.error('3D move error:', e);
+      }
+    } else {
+      // Clear selection if clicking elsewhere
+      setSelectedSquare(null);
+      setLegalMoves([]);
+    }
+  }, [isThinking, gameStatus, playerColor, selectedSquare, legalMoves, handleGameOver]);
+
+  // Toggle 3D mode
+  const toggle3DMode = useCallback(() => {
+    setIs3DMode(prev => !prev);
+    setSelectedSquare(null);
+    setLegalMoves([]);
+  }, []);
 
   // Resign
   const handleResign = () => {
@@ -625,80 +711,6 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
 
   const isPlayerTurn = (playerColor === 'white' && currentTurn === 'w') || 
                        (playerColor === 'black' && currentTurn === 'b');
-
-  // Check if playing against Hidden Master (AlphaZero)
-  const isHiddenMaster = enemy?.id === 'alphazero';
-
-  // Get valid moves for a square - used by 3D board
-  const getValidMovesForSquare = useCallback((square) => {
-    if (!isPlayerTurn || isThinking || gameStatus !== 'playing') return [];
-    const game = gameRef.current;
-    const piece = game.get(square);
-    if (!piece) return [];
-    
-    // Check if piece belongs to player
-    const pieceColor = piece.color === 'w' ? 'white' : 'black';
-    if (pieceColor !== playerColor) return [];
-    
-    // Get all legal moves from this square
-    const moves = game.moves({ square, verbose: true });
-    return moves.map(m => m.to);
-  }, [isPlayerTurn, isThinking, gameStatus, playerColor]);
-
-  // Handle 3D board move
-  const handle3DMove = useCallback((from, to) => {
-    if (isThinking || gameStatus !== 'playing') return;
-    
-    const game = gameRef.current;
-    const turn = game.turn();
-    const isPlayerTurnNow = (playerColor === 'white' && turn === 'w') || 
-                            (playerColor === 'black' && turn === 'b');
-    
-    if (!isPlayerTurnNow) return;
-    
-    try {
-      const moveResult = game.move({
-        from,
-        to,
-        promotion: 'q'
-      });
-      
-      if (moveResult === null) return;
-      
-      moveCountRef.current++;
-      const newFen = game.fen();
-      
-      console.log('3D Board move:', moveResult.san, 'New FEN:', newFen);
-      
-      setPosition(newFen);
-      setCurrentTurn(game.turn());
-      setIsInCheck(game.isCheck() && !game.isCheckmate());
-      setMoveHistory(prev => [...prev, moveResult.san]);
-      setLastMove({ from, to });
-      
-      if (moveResult.captured) {
-        const capturedColor = moveResult.color === 'w' ? 'black' : 'white';
-        setCapturedPieces(prev => ({
-          ...prev,
-          [capturedColor]: [...prev[capturedColor], moveResult.captured]
-        }));
-      }
-      
-      if (game.isGameOver()) {
-        handleGameOver(game);
-        return;
-      }
-      
-      // Trigger engine move
-      setTimeout(() => {
-        if (stockfishRef.current?.makeEngineMove) {
-          stockfishRef.current.makeEngineMove();
-        }
-      }, 300);
-    } catch (e) {
-      console.error('3D Move error:', e);
-    }
-  }, [isThinking, gameStatus, playerColor, handleGameOver]);
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden" data-testid="chess-game-container" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%)' }}>
@@ -824,62 +836,51 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
                 RESIGN
               </button>
             </div>
+            
+            {/* 3D Mode Toggle - Only for AlphaZero Hidden Master */}
+            {isAlphaZero && (
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <button
+                  data-testid="toggle-3d-btn"
+                  onClick={toggle3DMode}
+                  className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all text-xs ${
+                    is3DMode 
+                      ? 'bg-gradient-to-r from-purple-600/40 to-pink-600/40 border border-purple-500/50' 
+                      : 'bg-white/10 hover:bg-white/20 border border-white/10'
+                  }`}
+                  style={{ fontFamily: 'Orbitron, sans-serif' }}
+                >
+                  <Box size={14} className={is3DMode ? 'text-purple-300' : 'text-gray-400'} />
+                  <span className={is3DMode ? 'text-purple-200' : 'text-gray-300'}>
+                    {is3DMode ? '3D MODE ACTIVE' : 'ENABLE 3D MODE'}
+                  </span>
+                </button>
+                {is3DMode && (
+                  <p className="text-center text-xs mt-1.5 text-purple-400/60" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                    Click squares to move • Right-drag to rotate
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Chess Board with Resize Handle */}
         <div className={`relative ${isMobile ? 'order-1' : ''}`} ref={boardContainerRef}>
-          {/* Board Container - Conditional 3D/2D rendering */}
-          {isHiddenMaster ? (
-            /* 3D Chess Board for Hidden Master (AlphaZero) */
-            <div 
-              className="chess-board-wrapper rounded-xl relative overflow-hidden"
-              style={{
-                width: isMobile ? Math.min(350, window.innerWidth - 40) : 500,
-                height: isMobile ? Math.min(350, window.innerWidth - 40) : 500,
-                boxShadow: '0 0 60px #bf00ff30, 0 0 100px #bf00ff10',
-                border: '2px solid #bf00ff40',
-              }}
-              data-testid="chess-3d-board-container"
-            >
-              <Suspense fallback={
-                <div className="w-full h-full flex items-center justify-center bg-[#0a0812]">
-                  <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-purple-400 text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                      INITIALIZING 3D ENGINE...
-                    </p>
-                  </div>
-                </div>
-              }>
-                <Chess3DBoard
-                  position={position}
-                  playerColor={playerColor}
-                  onMove={handle3DMove}
-                  validMovesForSquare={getValidMovesForSquare}
-                  isThinking={isThinking}
-                  lastMove={lastMove}
-                  gameRef={gameRef}
-                />
-              </Suspense>
-              
-              {/* 3D Mode indicator */}
-              <div 
-                className="absolute top-2 left-2 px-3 py-1 rounded-full text-xs"
-                style={{
-                  background: 'linear-gradient(135deg, #bf00ff 0%, #ff00bf 100%)',
-                  fontFamily: 'Orbitron, sans-serif',
-                  fontSize: '10px',
-                  color: '#000',
-                  fontWeight: 'bold',
-                  boxShadow: '0 0 15px #bf00ff50'
-                }}
-              >
-                3D MODE
-              </div>
-            </div>
+          {/* 3D Mode Board */}
+          {is3DMode && isAlphaZero ? (
+            <Chess3DMode
+              position={position}
+              playerColor={playerColor}
+              onSquareClick={handle3DSquareClick}
+              selectedSquare={selectedSquare}
+              legalMoves={legalMoves}
+              lastMove={lastMove}
+              isThinking={isThinking}
+              boardSize={boardSize}
+            />
           ) : (
-            /* Standard 2D Chess Board for other enemies */
+            /* Standard 2D Board Container */
             <div 
               className="chess-board-wrapper p-1.5 rounded-lg relative"
               style={{
@@ -896,63 +897,61 @@ const ChessGame = ({ enemy, playerColor, onGameEnd, onBack }) => {
                 options={{
                   id: "chess-board",
                   position: position,
-                  onPieceDrop: onDrop,
-                  canDragPiece: canDragPiece,
-                  boardWidth: boardSize,
-                  boardOrientation: playerColor,
-                  boardStyle: {
-                    borderRadius: '6px',
-                    boxShadow: 'inset 0 0 15px rgba(0,0,0,0.4)'
-                  },
-                  squareStyles: customSquareStyles,
-                  darkSquareStyle: { backgroundColor: '#4a5568' },
-                  lightSquareStyle: { backgroundColor: '#a0aec0' },
-                  animationDurationInMs: 180
-                }}
-              />
-              
-              {/* Resize Handle - Bottom Right Corner */}
-              <div
-                className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity"
-                style={{ 
-                  background: `linear-gradient(135deg, transparent 50%, ${enemy?.color || '#ff0080'}60 50%)`,
-                  borderBottomRightRadius: '6px'
-                }}
-                onMouseDown={handleResizeStart}
-                onTouchStart={handleResizeStart}
-                data-testid="resize-handle"
-              >
-                <Move size={10} className="text-white/50 rotate-45" style={{ marginTop: '4px', marginLeft: '4px' }} />
-              </div>
+                onPieceDrop: onDrop,
+                canDragPiece: canDragPiece,
+                boardWidth: boardSize,
+                boardOrientation: playerColor,
+                boardStyle: {
+                  borderRadius: '6px',
+                  boxShadow: 'inset 0 0 15px rgba(0,0,0,0.4)'
+                },
+                squareStyles: customSquareStyles,
+                darkSquareStyle: { backgroundColor: '#4a5568' },
+                lightSquareStyle: { backgroundColor: '#a0aec0' },
+                animationDurationInMs: 180
+              }}
+            />
+            
+            {/* Resize Handle - Bottom Right Corner */}
+            <div
+              className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity"
+              style={{ 
+                background: `linear-gradient(135deg, transparent 50%, ${enemy?.color || '#ff0080'}60 50%)`,
+                borderBottomRightRadius: '6px'
+              }}
+              onMouseDown={handleResizeStart}
+              onTouchStart={handleResizeStart}
+              data-testid="resize-handle"
+            >
+              <Move size={10} className="text-white/50 rotate-45" style={{ marginTop: '4px', marginLeft: '4px' }} />
+            </div>
             </div>
           )}
           
-          {/* Size Controls - Only for 2D board */}
-          {!isHiddenMaster && (
-            <div className="flex justify-center gap-2 mt-2">
-              <button
-                onClick={setSmallSize}
-                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
-                style={{ fontFamily: 'Rajdhani, sans-serif' }}
-                data-testid="size-small-btn"
-              >
-                <Minimize2 size={12} />
-                Small
-              </button>
-              <span className="text-xs text-gray-500 flex items-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                {boardSize}px
-              </span>
-              <button
-                onClick={setLargeSize}
-                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
-                style={{ fontFamily: 'Rajdhani, sans-serif' }}
-                data-testid="size-large-btn"
-              >
-                <Maximize2 size={12} />
-                Large
-              </button>
-            </div>
-          )}
+          {/* Size Controls */}
+          <div className="flex justify-center gap-2 mt-2">
+            <button
+              onClick={setSmallSize}
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
+              style={{ fontFamily: 'Rajdhani, sans-serif' }}
+              data-testid="size-small-btn"
+            >
+              <Minimize2 size={12} />
+              Small
+            </button>
+            <span className="text-xs text-gray-500 flex items-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+              {boardSize}px
+            </span>
+            <button
+              onClick={setLargeSize}
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 transition-all"
+              style={{ fontFamily: 'Rajdhani, sans-serif' }}
+              data-testid="size-large-btn"
+            >
+              <Maximize2 size={12} />
+              Large
+            </button>
+          </div>
           
           {/* Check indicator */}
           {isInCheck && (
