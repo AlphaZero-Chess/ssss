@@ -101,6 +101,7 @@ function AppContent() {
         isOpen={isAchievementsPanelOpen}
         onClose={() => setIsAchievementsPanelOpen(false)}
         onToggle={() => setIsAchievementsPanelOpen(prev => !prev)}
+        showToggleButton={gameState === "enemy-select"}
       />
       
       <BrowserRouter>

@@ -168,7 +168,8 @@ const AchievementsPanel = ({
   statistics, 
   isOpen, 
   onClose,
-  onToggle 
+  onToggle,
+  showToggleButton = true // NEW: Control toggle button visibility (default true for backward compatibility)
 }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showSecrets, setShowSecrets] = useState(false);
@@ -213,6 +214,11 @@ const AchievementsPanel = ({
       [category]: !prev[category]
     }));
   };
+  
+  // Hide toggle button if showToggleButton is false and panel is closed
+  if (!isOpen && !showToggleButton) {
+    return null;
+  }
   
   if (!isOpen) {
     return (
