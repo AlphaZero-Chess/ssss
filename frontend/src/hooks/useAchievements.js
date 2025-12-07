@@ -708,6 +708,7 @@ export const useAchievements = () => {
       return false;
     }
     
+    // Use current ref value for checks
     const currentAchievements = achievementsRef.current;
     
     // Check if already unlocked
@@ -715,7 +716,7 @@ export const useAchievements = () => {
       return false;
     }
     
-    // Check requirements
+    // Check requirements - use the ref which we update synchronously
     if (achievement.requires && achievement.requires.length > 0) {
       const allRequirementsMet = achievement.requires.every(
         reqId => currentAchievements.unlocked[reqId]
@@ -725,7 +726,7 @@ export const useAchievements = () => {
       }
     }
     
-    // Unlock the achievement
+    // Unlock the achievement - create new state
     const newUnlocked = {
       ...currentAchievements.unlocked,
       [achievement.id]: {
@@ -737,13 +738,18 @@ export const useAchievements = () => {
     const newTotalPoints = currentAchievements.totalPoints + achievement.points;
     const newUnlockedCount = currentAchievements.unlockedCount + 1;
     
-    setAchievements(prev => ({
-      ...prev,
+    // CRITICAL: Update the ref SYNCHRONOUSLY before React state update
+    // This ensures subsequent unlockAchievement calls in the same tick see the updated data
+    achievementsRef.current = {
+      ...currentAchievements,
       unlocked: newUnlocked,
       totalPoints: newTotalPoints,
       unlockedCount: newUnlockedCount,
       lastUnlocked: achievement.id
-    }));
+    };
+    
+    // Now update React state (async)
+    setAchievements(achievementsRef.current);
     
     // Add notification
     const notification = {
@@ -754,10 +760,14 @@ export const useAchievements = () => {
     
     setNotifications(prev => [...prev, notification]);
     
-    console.log(`Achievement Unlocked: ${achievement.name}`);
+    console.log(`🏆 Achievement Unlocked: ${achievement.name} (+${achievement.points} pts)`);
     
-    // Check for meta achievements
-    setTimeout(() => checkMetaAchievements(newTotalPoints, newUnlockedCount), 100);
+    // Check for meta achievements - use a microtask to allow other achievements to process first
+    // This ensures all achievements from a single game result are counted
+    queueMicrotask(() => {
+      const latestAchievements = achievementsRef.current;
+      checkMetaAchievements(latestAchievements.totalPoints, latestAchievements.unlockedCount);
+    });
     
     return true;
   }, []);
@@ -766,23 +776,27 @@ export const useAchievements = () => {
   // UPDATE STATISTICS
   // ═══════════════════════════════════════════════════════════════════════
   const updateStatistics = useCallback((updates) => {
-    setStatistics(prev => {
-      const newStats = { ...prev, ...updates, lastUpdated: Date.now() };
-      return newStats;
-    });
+    // CRITICAL: Update ref synchronously FIRST
+    const newStats = { ...statisticsRef.current, ...updates, lastUpdated: Date.now() };
+    statisticsRef.current = newStats;
+    
+    // Then update React state (async)
+    setStatistics(newStats);
   }, []);
   
   // ═══════════════════════════════════════════════════════════════════════
   // RECORD GAME RESULT
   // ═══════════════════════════════════════════════════════════════════════
   const recordGameResult = useCallback((result, enemyId, moveCount = 0, piecesLost = 0) => {
+    // Read from ref for consistent state
     const currentStats = statisticsRef.current;
     const updates = { totalGames: currentStats.totalGames + 1 };
     
-    // Update enemies played
-    if (!currentStats.enemiesPlayed.includes(enemyId)) {
-      updates.enemiesPlayed = [...currentStats.enemiesPlayed, enemyId];
-    }
+    // Update enemies played - always track this
+    const enemiesPlayedNow = currentStats.enemiesPlayed.includes(enemyId)
+      ? currentStats.enemiesPlayed
+      : [...currentStats.enemiesPlayed, enemyId];
+    updates.enemiesPlayed = enemiesPlayedNow;
     
     if (result === 'player') {
       // WIN
@@ -794,33 +808,30 @@ export const useAchievements = () => {
       }
       
       // Track enemy defeated
-      if (!currentStats.enemiesDefeated.includes(enemyId)) {
-        updates.enemiesDefeated = [...currentStats.enemiesDefeated, enemyId];
-      }
+      const enemiesDefeatedNow = currentStats.enemiesDefeated.includes(enemyId)
+        ? currentStats.enemiesDefeated
+        : [...currentStats.enemiesDefeated, enemyId];
+      updates.enemiesDefeated = enemiesDefeatedNow;
       
       // Special win conditions
       if (piecesLost === 0) {
-        updates.perfectWins = currentStats.perfectWins + 1;
+        updates.perfectWins = (currentStats.perfectWins || 0) + 1;
       }
       if (moveCount > 0 && moveCount <= 20) {
-        updates.quickWins = currentStats.quickWins + 1;
+        updates.quickWins = (currentStats.quickWins || 0) + 1;
       }
       if (moveCount > 60) {
-        updates.longGameWins = currentStats.longGameWins + 1;
+        updates.longGameWins = (currentStats.longGameWins || 0) + 1;
       }
       
+      // Update statistics synchronously (ref is updated inside)
       updateStatistics(updates);
       
-      // Check victory achievements - use computed values with proper fallbacks
-      const newTotalWins = updates.totalWins !== undefined ? updates.totalWins : currentStats.totalWins + 1;
-      const newWinStreak = updates.currentWinStreak !== undefined ? updates.currentWinStreak : currentStats.currentWinStreak + 1;
-      
-      setTimeout(() => {
-        checkVictoryAchievements(newTotalWins, enemyId);
-        checkStreakAchievements(newWinStreak);
-        checkSpecialWinAchievements(piecesLost, moveCount);
-        checkMasteryAchievements(updates);
-      }, 100);
+      // Check victory achievements SYNCHRONOUSLY - no setTimeout
+      checkVictoryAchievements(updates.totalWins, enemyId);
+      checkStreakAchievements(updates.currentWinStreak);
+      checkSpecialWinAchievements(piecesLost, moveCount);
+      checkMasteryAchievements(enemiesDefeatedNow);
       
     } else if (result === 'enemy') {
       // LOSS
@@ -828,16 +839,15 @@ export const useAchievements = () => {
       updates.currentWinStreak = 0;
       
       // Track enemy lost to
-      if (!currentStats.enemiesLostTo.includes(enemyId)) {
-        updates.enemiesLostTo = [...currentStats.enemiesLostTo, enemyId];
-      }
+      const enemiesLostToNow = currentStats.enemiesLostTo.includes(enemyId)
+        ? currentStats.enemiesLostTo
+        : [...currentStats.enemiesLostTo, enemyId];
+      updates.enemiesLostTo = enemiesLostToNow;
       
       updateStatistics(updates);
       
-      // Check defeat achievements
-      setTimeout(() => {
-        checkDefeatAchievements(updates.totalLosses || currentStats.totalLosses + 1, enemyId);
-      }, 100);
+      // Check defeat achievements SYNCHRONOUSLY
+      checkDefeatAchievements(updates.totalLosses, enemyId);
       
     } else if (result === 'draw') {
       // DRAW
@@ -846,34 +856,27 @@ export const useAchievements = () => {
       
       updateStatistics(updates);
       
-      // Check draw achievements
-      setTimeout(() => {
-        checkDrawAchievements(updates.totalDraws || currentStats.totalDraws + 1, enemyId, false);
-      }, 100);
+      // Check draw achievements SYNCHRONOUSLY
+      checkDrawAchievements(updates.totalDraws, enemyId, false);
       
     } else if (result === 'stalemate') {
       // STALEMATE
-      updates.totalStalemates = currentStats.totalStalemates + 1;
+      updates.totalStalemates = (currentStats.totalStalemates || 0) + 1;
       updates.totalDraws = currentStats.totalDraws + 1;
       updates.currentWinStreak = 0;
       
       updateStatistics(updates);
       
-      // Check stalemate achievements
-      setTimeout(() => {
-        checkDrawAchievements(updates.totalDraws || currentStats.totalDraws + 1, enemyId, true);
-      }, 100);
+      // Check stalemate achievements SYNCHRONOUSLY
+      checkDrawAchievements(updates.totalDraws, enemyId, true);
     }
     
-    // Check all enemies played - must include current enemyId
+    // Check all enemies played achievement
     const allEnemies = ['elegant', 'nonelegant', 'minia0', 'alphazero'];
-    const playedEnemies = updates.enemiesPlayed || currentStats.enemiesPlayed;
-    // Ensure current enemy is included in the check
-    const allPlayedEnemies = playedEnemies.includes(enemyId) ? playedEnemies : [...playedEnemies, enemyId];
-    if (allEnemies.every(e => allPlayedEnemies.includes(e))) {
-      setTimeout(() => unlockAchievement('enemy_collector'), 150);
+    if (allEnemies.every(e => enemiesPlayedNow.includes(e))) {
+      unlockAchievement('enemy_collector');
     }
-  }, [updateStatistics, unlockAchievement]);
+  }, [updateStatistics, unlockAchievement, checkVictoryAchievements, checkStreakAchievements, checkSpecialWinAchievements, checkMasteryAchievements, checkDefeatAchievements, checkDrawAchievements]);
   
   // ═══════════════════════════════════════════════════════════════════════
   // ACHIEVEMENT CHECKERS
@@ -932,12 +935,11 @@ export const useAchievements = () => {
     if (moveCount > 60) unlockAchievement('endgame_master');
   }, [unlockAchievement]);
   
-  const checkMasteryAchievements = useCallback((stats) => {
-    const currentStats = { ...statisticsRef.current, ...stats };
+  const checkMasteryAchievements = useCallback((enemiesDefeated) => {
     const allEnemies = ['elegant', 'nonelegant', 'minia0', 'alphazero'];
     
-    // Check if all enemies defeated
-    if (allEnemies.every(e => currentStats.enemiesDefeated.includes(e))) {
+    // Check if all enemies defeated - use the passed array directly
+    if (Array.isArray(enemiesDefeated) && allEnemies.every(e => enemiesDefeated.includes(e))) {
       unlockAchievement('conqueror_of_all');
     }
   }, [unlockAchievement]);
@@ -984,12 +986,15 @@ export const useAchievements = () => {
   }, [updateStatistics, unlockAchievement]);
   
   const onKeyboardUsed = useCallback(() => {
+    // Update ref synchronously first
+    const currentStats = statisticsRef.current;
     updateStatistics({ keyboardUsed: true });
     unlockAchievement('keyboard_hacker');
     
-    // Check for easter egg hunter
-    const stats = statisticsRef.current;
-    if (stats.crewmateFound && stats.laptopDropped && stats.hiddenMasterUnlocked) {
+    // Check for easter egg hunter using the ref which is now updated
+    // Need to check AFTER the updateStatistics call since ref is updated synchronously
+    const updatedStats = statisticsRef.current;
+    if (updatedStats.crewmateFound && updatedStats.laptopDropped && updatedStats.hiddenMasterUnlocked) {
       unlockAchievement('easter_egg_hunter');
     }
   }, [updateStatistics, unlockAchievement]);
