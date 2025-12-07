@@ -642,12 +642,40 @@ const getDefaultAchievements = () => ({
 // ═══════════════════════════════════════════════════════════════════════
 // MAIN HOOK
 // ═══════════════════════════════════════════════════════════════════════
+
+// Helper function to load initial state from localStorage
+const loadInitialAchievements = () => {
+  try {
+    const savedAchievements = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
+    if (savedAchievements) {
+      const parsed = JSON.parse(savedAchievements);
+      return { ...getDefaultAchievements(), ...parsed };
+    }
+  } catch (e) {
+    console.error('Failed to load achievements:', e);
+  }
+  return getDefaultAchievements();
+};
+
+const loadInitialStatistics = () => {
+  try {
+    const savedStatistics = localStorage.getItem(STORAGE_KEYS.STATISTICS);
+    if (savedStatistics) {
+      const parsed = JSON.parse(savedStatistics);
+      return { ...getDefaultStatistics(), ...parsed };
+    }
+  } catch (e) {
+    console.error('Failed to load statistics:', e);
+  }
+  return getDefaultStatistics();
+};
+
 export const useAchievements = () => {
-  // State
-  const [achievements, setAchievements] = useState(getDefaultAchievements);
-  const [statistics, setStatistics] = useState(getDefaultStatistics);
+  // State with lazy initialization from localStorage
+  const [achievements, setAchievements] = useState(loadInitialAchievements);
+  const [statistics, setStatistics] = useState(loadInitialStatistics);
   const [notifications, setNotifications] = useState([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(true); // Already loaded via lazy init
   
   // Refs to avoid stale closures
   const achievementsRef = useRef(achievements);
@@ -660,31 +688,8 @@ export const useAchievements = () => {
   }, [achievements, statistics]);
   
   // ═══════════════════════════════════════════════════════════════════════
-  // PERSISTENCE - Load/Save from localStorage
+  // PERSISTENCE - Save to localStorage when state changes
   // ═══════════════════════════════════════════════════════════════════════
-  useEffect(() => {
-    try {
-      const savedAchievements = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
-      const savedStatistics = localStorage.getItem(STORAGE_KEYS.STATISTICS);
-      
-      if (savedAchievements) {
-        const parsed = JSON.parse(savedAchievements);
-        setAchievements(prev => ({ ...getDefaultAchievements(), ...parsed }));
-      }
-      
-      if (savedStatistics) {
-        const parsed = JSON.parse(savedStatistics);
-        setStatistics(prev => ({ ...getDefaultStatistics(), ...parsed }));
-      }
-      
-      setIsLoaded(true);
-    } catch (e) {
-      console.error('Failed to load achievements:', e);
-      setIsLoaded(true);
-    }
-  }, []);
-  
-  // Save to localStorage when state changes
   useEffect(() => {
     if (!isLoaded) return;
     
@@ -762,11 +767,58 @@ export const useAchievements = () => {
     
     console.log(`🏆 Achievement Unlocked: ${achievement.name} (+${achievement.points} pts)`);
     
-    // Check for meta achievements - use a microtask to allow other achievements to process first
-    // This ensures all achievements from a single game result are counted
+    // INLINE meta achievement checking to avoid circular dependency
+    // Use a microtask to allow other achievements to process first
     queueMicrotask(() => {
       const latestAchievements = achievementsRef.current;
-      checkMetaAchievements(latestAchievements.totalPoints, latestAchievements.unlockedCount);
+      const totalPoints = latestAchievements.totalPoints;
+      const unlockedCount = latestAchievements.unlockedCount;
+      const totalAchievements = Object.keys(ACHIEVEMENTS).length;
+      
+      // Helper to unlock without recursion (checks ref directly)
+      const tryUnlock = (id) => {
+        const ach = ACHIEVEMENTS[id.toUpperCase()] || Object.values(ACHIEVEMENTS).find(a => a.id === id);
+        if (!ach || achievementsRef.current.unlocked[ach.id]) return;
+        
+        // Check requirements
+        if (ach.requires && ach.requires.length > 0) {
+          const met = ach.requires.every(reqId => achievementsRef.current.unlocked[reqId]);
+          if (!met) return;
+        }
+        
+        // Unlock meta achievement
+        const newUnlockedMeta = {
+          ...achievementsRef.current.unlocked,
+          [ach.id]: { unlockedAt: Date.now(), points: ach.points }
+        };
+        achievementsRef.current = {
+          ...achievementsRef.current,
+          unlocked: newUnlockedMeta,
+          totalPoints: achievementsRef.current.totalPoints + ach.points,
+          unlockedCount: achievementsRef.current.unlockedCount + 1,
+          lastUnlocked: ach.id
+        };
+        setAchievements(achievementsRef.current);
+        setNotifications(prev => [...prev, {
+          id: `${ach.id}_${Date.now()}`,
+          achievement: ach,
+          timestamp: Date.now()
+        }]);
+        console.log(`🏆 Achievement Unlocked: ${ach.name} (+${ach.points} pts)`);
+      };
+      
+      // Point achievements
+      if (totalPoints >= 100) tryUnlock('point_collector_100');
+      if (totalPoints >= 500) tryUnlock('point_collector_500');
+      if (totalPoints >= 1000) tryUnlock('point_collector_1000');
+      
+      // Completion achievements
+      if (unlockedCount >= Math.floor(totalAchievements / 2)) {
+        tryUnlock('completionist');
+      }
+      if (unlockedCount >= totalAchievements - 1) {
+        tryUnlock('ultimate_master');
+      }
     });
     
     return true;
@@ -783,6 +835,72 @@ export const useAchievements = () => {
     // Then update React state (async)
     setStatistics(newStats);
   }, []);
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // ACHIEVEMENT CHECKERS (must be declared BEFORE recordGameResult)
+  // ═══════════════════════════════════════════════════════════════════════
+  const checkVictoryAchievements = useCallback((totalWins, enemyId) => {
+    // Count-based achievements
+    if (totalWins >= 1) unlockAchievement('first_blood');
+    if (totalWins >= 5) unlockAchievement('warrior');
+    if (totalWins >= 10) unlockAchievement('champion');
+    if (totalWins >= 25) unlockAchievement('grandmaster');
+    if (totalWins >= 50) unlockAchievement('legend');
+    if (totalWins >= 100) unlockAchievement('immortal');
+    
+    // Enemy-specific achievements
+    if (enemyId === 'elegant') unlockAchievement('elegant_slayer');
+    if (enemyId === 'nonelegant') unlockAchievement('crusher_crusher');
+    if (enemyId === 'minia0') unlockAchievement('alpha_tamer');
+    if (enemyId === 'alphazero') unlockAchievement('neural_conqueror');
+  }, [unlockAchievement]);
+  
+  const checkDefeatAchievements = useCallback((totalLosses, enemyId) => {
+    // Count-based achievements
+    if (totalLosses >= 1) unlockAchievement('learning_experience');
+    if (totalLosses >= 10) unlockAchievement('persistent');
+    if (totalLosses >= 25) unlockAchievement('never_give_up');
+    
+    // Enemy-specific achievements
+    if (enemyId === 'elegant') unlockAchievement('crushed_by_elegant');
+    if (enemyId === 'nonelegant') unlockAchievement('demolished_by_crusher');
+    if (enemyId === 'minia0') unlockAchievement('outsmarted_by_mini');
+    if (enemyId === 'alphazero') unlockAchievement('neural_dominated');
+  }, [unlockAchievement]);
+  
+  const checkDrawAchievements = useCallback((totalDraws, enemyId, isStalemate) => {
+    // Count-based achievements
+    if (totalDraws >= 1) unlockAchievement('peaceful_resolution');
+    if (totalDraws >= 5) unlockAchievement('diplomat');
+    if (totalDraws >= 10) unlockAchievement('perpetual_dancer');
+    
+    // Stalemate achievement
+    if (isStalemate) unlockAchievement('stalemate_artist');
+    
+    // AlphaZero draw
+    if (enemyId === 'alphazero') unlockAchievement('neural_standoff');
+  }, [unlockAchievement]);
+  
+  const checkStreakAchievements = useCallback((currentStreak) => {
+    if (currentStreak >= 3) unlockAchievement('win_streak_3');
+    if (currentStreak >= 5) unlockAchievement('win_streak_5');
+    if (currentStreak >= 10) unlockAchievement('win_streak_10');
+  }, [unlockAchievement]);
+  
+  const checkSpecialWinAchievements = useCallback((piecesLost, moveCount) => {
+    if (piecesLost === 0) unlockAchievement('perfect_game');
+    if (moveCount > 0 && moveCount <= 20) unlockAchievement('quick_mate');
+    if (moveCount > 60) unlockAchievement('endgame_master');
+  }, [unlockAchievement]);
+  
+  const checkMasteryAchievements = useCallback((enemiesDefeated) => {
+    const allEnemies = ['elegant', 'nonelegant', 'minia0', 'alphazero'];
+    
+    // Check if all enemies defeated - use the passed array directly
+    if (Array.isArray(enemiesDefeated) && allEnemies.every(e => enemiesDefeated.includes(e))) {
+      unlockAchievement('conqueror_of_all');
+    }
+  }, [unlockAchievement]);
   
   // ═══════════════════════════════════════════════════════════════════════
   // RECORD GAME RESULT
@@ -877,89 +995,6 @@ export const useAchievements = () => {
       unlockAchievement('enemy_collector');
     }
   }, [updateStatistics, unlockAchievement, checkVictoryAchievements, checkStreakAchievements, checkSpecialWinAchievements, checkMasteryAchievements, checkDefeatAchievements, checkDrawAchievements]);
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // ACHIEVEMENT CHECKERS
-  // ═══════════════════════════════════════════════════════════════════════
-  const checkVictoryAchievements = useCallback((totalWins, enemyId) => {
-    // Count-based achievements
-    if (totalWins >= 1) unlockAchievement('first_blood');
-    if (totalWins >= 5) unlockAchievement('warrior');
-    if (totalWins >= 10) unlockAchievement('champion');
-    if (totalWins >= 25) unlockAchievement('grandmaster');
-    if (totalWins >= 50) unlockAchievement('legend');
-    if (totalWins >= 100) unlockAchievement('immortal');
-    
-    // Enemy-specific achievements
-    if (enemyId === 'elegant') unlockAchievement('elegant_slayer');
-    if (enemyId === 'nonelegant') unlockAchievement('crusher_crusher');
-    if (enemyId === 'minia0') unlockAchievement('alpha_tamer');
-    if (enemyId === 'alphazero') unlockAchievement('neural_conqueror');
-  }, [unlockAchievement]);
-  
-  const checkDefeatAchievements = useCallback((totalLosses, enemyId) => {
-    // Count-based achievements
-    if (totalLosses >= 1) unlockAchievement('learning_experience');
-    if (totalLosses >= 10) unlockAchievement('persistent');
-    if (totalLosses >= 25) unlockAchievement('never_give_up');
-    
-    // Enemy-specific achievements
-    if (enemyId === 'elegant') unlockAchievement('crushed_by_elegant');
-    if (enemyId === 'nonelegant') unlockAchievement('demolished_by_crusher');
-    if (enemyId === 'minia0') unlockAchievement('outsmarted_by_mini');
-    if (enemyId === 'alphazero') unlockAchievement('neural_dominated');
-  }, [unlockAchievement]);
-  
-  const checkDrawAchievements = useCallback((totalDraws, enemyId, isStalemate) => {
-    // Count-based achievements
-    if (totalDraws >= 1) unlockAchievement('peaceful_resolution');
-    if (totalDraws >= 5) unlockAchievement('diplomat');
-    if (totalDraws >= 10) unlockAchievement('perpetual_dancer');
-    
-    // Stalemate achievement
-    if (isStalemate) unlockAchievement('stalemate_artist');
-    
-    // AlphaZero draw
-    if (enemyId === 'alphazero') unlockAchievement('neural_standoff');
-  }, [unlockAchievement]);
-  
-  const checkStreakAchievements = useCallback((currentStreak) => {
-    if (currentStreak >= 3) unlockAchievement('win_streak_3');
-    if (currentStreak >= 5) unlockAchievement('win_streak_5');
-    if (currentStreak >= 10) unlockAchievement('win_streak_10');
-  }, [unlockAchievement]);
-  
-  const checkSpecialWinAchievements = useCallback((piecesLost, moveCount) => {
-    if (piecesLost === 0) unlockAchievement('perfect_game');
-    if (moveCount > 0 && moveCount <= 20) unlockAchievement('quick_mate');
-    if (moveCount > 60) unlockAchievement('endgame_master');
-  }, [unlockAchievement]);
-  
-  const checkMasteryAchievements = useCallback((enemiesDefeated) => {
-    const allEnemies = ['elegant', 'nonelegant', 'minia0', 'alphazero'];
-    
-    // Check if all enemies defeated - use the passed array directly
-    if (Array.isArray(enemiesDefeated) && allEnemies.every(e => enemiesDefeated.includes(e))) {
-      unlockAchievement('conqueror_of_all');
-    }
-  }, [unlockAchievement]);
-  
-  const checkMetaAchievements = useCallback((totalPoints, unlockedCount) => {
-    const totalAchievements = Object.keys(ACHIEVEMENTS).length;
-    
-    // Point achievements
-    if (totalPoints >= 100) unlockAchievement('point_collector_100');
-    if (totalPoints >= 500) unlockAchievement('point_collector_500');
-    if (totalPoints >= 1000) unlockAchievement('point_collector_1000');
-    
-    // Completion achievements
-    if (unlockedCount >= Math.floor(totalAchievements / 2)) {
-      unlockAchievement('completionist');
-    }
-    if (unlockedCount >= totalAchievements - 1) { // -1 because ultimate_master is last
-      unlockAchievement('ultimate_master');
-    }
-  }, [unlockAchievement]);
   
   // ═══════════════════════════════════════════════════════════════════════
   // SPECIAL EVENT TRIGGERS
